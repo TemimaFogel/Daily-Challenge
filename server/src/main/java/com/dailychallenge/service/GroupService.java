@@ -189,6 +189,7 @@ public class GroupService {
                 .userId(m.getUserId())
                 .name(user != null ? user.getName() : null)
                 .email(user != null ? user.getEmail() : null)
+                .profileImageUrl(user != null ? user.getProfileImageUrl() : null)
                 .joinedAt(m.getCreatedAt())
                 .build();
     }

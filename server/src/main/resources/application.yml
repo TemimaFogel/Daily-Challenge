@@ -27,3 +27,8 @@ app:
   daily:
     # IANA timezone for "today" / daily boundaries (default: Asia/Jerusalem)
     zone: Asia/Jerusalem
+  uploads:
+    # Directory for uploaded files (e.g. profile images). Created on startup if missing.
+    dir: ./uploads
+    # Base URL for public image URLs (e.g. http://localhost:8080). Override in production.
+    public-base-url: http://localhost:8080

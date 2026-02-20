@@ -16,6 +16,7 @@ public class UserMapper {
                 .email(user.getEmail())
                 .name(user.getName())
                 .timezone(user.getTimezone())
+                .profileImageUrl(user.getProfileImageUrl())
                 .build();
     }
 }
