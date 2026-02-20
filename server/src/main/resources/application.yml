@@ -24,3 +24,6 @@ app:
   jwt:
     secret: ${JWT_SECRET}
     expiration-minutes: 120
+  daily:
+    # IANA timezone for "today" / daily boundaries (default: Asia/Jerusalem)
+    zone: Asia/Jerusalem

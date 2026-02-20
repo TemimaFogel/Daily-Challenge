@@ -7,6 +7,7 @@ import com.dailychallenge.dto.dashboard.PersonalDashboardItemDTO;
 import com.dailychallenge.entity.Challenge;
 import com.dailychallenge.entity.ChallengeCompletion;
 import com.dailychallenge.entity.ChallengeParticipant;
+import com.dailychallenge.config.DailyZone;
 import com.dailychallenge.exception.ForbiddenException;
 import com.dailychallenge.repository.ChallengeRepository;
 import com.dailychallenge.repository.CompletionRepository;
@@ -34,6 +35,7 @@ public class DashboardService {
     private final StatsService statsService;
     private final GroupService groupService;
     private final UserRepository userRepository;
+    private final DailyZone dailyZone;
 
     private static final int STREAK_LOOKBACK_DAYS = 60;
 
@@ -60,20 +62,22 @@ public class DashboardService {
         List<ChallengeParticipant> participations = participantRepository.findByUserId(authUserId);
         int totalChallengesSignedFor = participations.size();
         long totalCompletions = completionRepository.countByUserId(authUserId);
-        LocalDate today = userRepository.findById(authUserId)
+        LocalDate todayUser = userRepository.findById(authUserId)
                 .map(u -> TimeUtil.todayInZone(u.getTimezone()))
                 .orElse(LocalDate.now());
-        LocalDate start30 = today.minusDays(30);
+        LocalDate todayActive = dailyZone.today();
+        LocalDate start30 = todayUser.minusDays(30);
         Map<LocalDate, Long> last30DaysCompletions = completionRepository
-                .findByUserIdAndCompletionDateBetween(authUserId, start30, today).stream()
+                .findByUserIdAndCompletionDateBetween(authUserId, start30, todayUser).stream()
                 .collect(Collectors.groupingBy(c -> c.getCompletionDate(), Collectors.counting()));
 
         List<PersonalDashboardItemDTO> items = participations.stream()
                 .map(p -> {
                     Challenge challenge = challengeRepository.findById(p.getChallengeId()).orElse(null);
                     if (challenge == null) return null;
+                    if (!todayActive.equals(challenge.getChallengeDate())) return null;
                     boolean completedToday = completionRepository.existsByChallengeIdAndUserIdAndCompletionDate(
-                            challenge.getId(), authUserId, today);
+                            challenge.getId(), authUserId, todayUser);
                     return PersonalDashboardItemDTO.builder()
                             .challenge(challengeService.toChallengeDTO(challenge))
                             .completedToday(completedToday)
@@ -87,7 +91,7 @@ public class DashboardService {
         return PersonalDashboardDTO.builder()
                 .totalChallengesSignedFor(totalChallengesSignedFor)
                 .totalCompletions(totalCompletions)
-                .activeDailyChallenges(totalChallengesSignedFor)
+                .activeDailyChallenges(items.size())
                 .last30DaysCompletions(last30DaysCompletions)
                 .streak(streak)
                 .challenges(items)
@@ -99,7 +103,7 @@ public class DashboardService {
         if (!groupService.isMember(groupId, authUserId)) {
             throw new ForbiddenException("Not a member of this group");
         }
-        List<Challenge> groupChallenges = challengeRepository.findByGroupId(groupId);
+        List<Challenge> groupChallenges = challengeRepository.findByGroupIdAndChallengeDate(groupId, dailyZone.today());
         List<UUID> groupChallengeIds = groupChallenges.stream().map(Challenge::getId).toList();
         List<ChallengeParticipant> myParticipationsInGroup = participantRepository.findByUserId(authUserId).stream()
                 .filter(p -> groupChallengeIds.contains(p.getChallengeId()))

@@ -5,6 +5,7 @@ import com.dailychallenge.entity.Challenge;
 import com.dailychallenge.entity.Visibility;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Component
@@ -19,6 +20,7 @@ public class ChallengeMapper {
                 .title(entity.getTitle())
                 .description(entity.getDescription())
                 .visibility(entity.getVisibility())
+                .challengeDate(entity.getChallengeDate())
                 .creatorId(entity.getCreatorId())
                 .groupId(entity.getGroupId())
                 .createdAt(entity.getCreatedAt())

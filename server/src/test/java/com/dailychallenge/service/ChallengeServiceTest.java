@@ -5,6 +5,7 @@ import com.dailychallenge.dto.challenge.CreateChallengeRequestDTO;
 import com.dailychallenge.entity.Challenge;
 import com.dailychallenge.entity.Group;
 import com.dailychallenge.entity.GroupMember;
+import com.dailychallenge.config.DailyZone;
 import com.dailychallenge.entity.Visibility;
 import com.dailychallenge.exception.ForbiddenException;
 import com.dailychallenge.exception.NotFoundException;
@@ -17,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,11 +27,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.argThat;
 
 @ExtendWith(MockitoExtension.class)
 class ChallengeServiceTest {
@@ -46,8 +48,13 @@ class ChallengeServiceTest {
     @Mock
     private GroupRepository groupRepository;
 
+    @Mock
+    private DailyZone dailyZone;
+
     @InjectMocks
     private ChallengeService challengeService;
+
+    private static final LocalDate TEST_DATE = LocalDate.of(2025, 2, 17);
 
     @Test
     void assertUserCanJoin_whenChallengeNotFound_throws404() {
@@ -168,8 +175,8 @@ class ChallengeServiceTest {
                 challengeService.getVisibleChallenges(authUserId, query);
 
         assertThat(result).isEmpty();
-        verify(challengeRepository, never()).findByVisibility(any());
-        verify(challengeRepository, never()).findByCreatorId(any());
+        verify(challengeRepository, never()).findByVisibilityAndChallengeDate(any(), any(LocalDate.class));
+        verify(challengeRepository, never()).findByCreatorIdAndChallengeDate(any(), any(LocalDate.class));
     }
 
     @Test
@@ -181,14 +188,16 @@ class ChallengeServiceTest {
                 .creatorId(otherUserId) // should be ignored: cannot expose other's personal
                 .build();
 
-        when(challengeRepository.findByVisibility(Visibility.PUBLIC)).thenReturn(List.of());
-        when(challengeRepository.findByCreatorId(authUserId)).thenReturn(List.of(
+        when(dailyZone.today()).thenReturn(TEST_DATE);
+        when(challengeRepository.findByVisibilityAndChallengeDate(eq(Visibility.PUBLIC), eq(TEST_DATE))).thenReturn(List.of());
+        when(challengeRepository.findByCreatorIdAndChallengeDate(eq(authUserId), eq(TEST_DATE))).thenReturn(List.of(
                 Challenge.builder()
                         .id(UUID.randomUUID())
                         .title("My Personal")
                         .description("Only mine")
                         .visibility(Visibility.PERSONAL)
                         .creatorId(authUserId)
+                        .challengeDate(TEST_DATE)
                         .build()
         ));
         when(groupMemberRepository.findByUserId(authUserId)).thenReturn(List.of());
@@ -212,24 +221,191 @@ class ChallengeServiceTest {
                 .visibility(Visibility.GROUP)
                 .groupId(groupId)
                 .creatorId(UUID.randomUUID())
+                .challengeDate(TEST_DATE)
                 .build();
         ChallengeQueryDTO query = ChallengeQueryDTO.builder().groupId(groupId).build();
 
         Group group = Group.builder().id(groupId).name("G").ownerId(UUID.randomUUID()).build();
+        when(dailyZone.today()).thenReturn(TEST_DATE);
         when(groupService.isMember(groupId, authUserId)).thenReturn(true);
         when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
         when(groupRepository.findByIdInAndDeletedAtIsNull(any())).thenReturn(List.of(group));
-        when(challengeRepository.findByVisibility(Visibility.PUBLIC)).thenReturn(List.of());
-        when(challengeRepository.findByCreatorId(authUserId)).thenReturn(List.of());
+        when(challengeRepository.findByVisibilityAndChallengeDate(eq(Visibility.PUBLIC), eq(TEST_DATE))).thenReturn(List.of());
+        when(challengeRepository.findByCreatorIdAndChallengeDate(eq(authUserId), eq(TEST_DATE))).thenReturn(List.of());
         when(groupMemberRepository.findByUserId(authUserId))
                 .thenReturn(List.of(GroupMember.builder().groupId(groupId).userId(authUserId).build()));
-        when(challengeRepository.findByGroupIdIn(List.of(groupId))).thenReturn(List.of(groupChallenge));
+        when(challengeRepository.findByGroupIdInAndChallengeDate(eq(List.of(groupId)), eq(TEST_DATE))).thenReturn(List.of(groupChallenge));
 
         List<com.dailychallenge.dto.challenge.ChallengeDTO> result =
                 challengeService.getVisibleChallenges(authUserId, query);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getGroupId()).isEqualTo(groupId);
+    }
+
+    // --- Daily lifecycle: create without date => challengeDate = today(zone) ---
+
+    @Test
+    void createChallenge_withoutDate_setsChallengeDateToToday() {
+        UUID authUserId = UUID.randomUUID();
+        CreateChallengeRequestDTO dto = CreateChallengeRequestDTO.builder()
+                .title("Daily Run")
+                .description("Run today")
+                .visibility(Visibility.PUBLIC)
+                .groupId(null)
+                .challengeDate(null)
+                .build();
+
+        when(dailyZone.today()).thenReturn(TEST_DATE);
+        when(challengeRepository.save(any(Challenge.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        challengeService.createChallenge(authUserId, dto);
+
+        verify(challengeRepository).save(argThat((Challenge c) ->
+                c.getChallengeDate() != null && c.getChallengeDate().equals(TEST_DATE)));
+    }
+
+    @Test
+    void createChallenge_withDate_usesRequestDate() {
+        UUID authUserId = UUID.randomUUID();
+        LocalDate requestedDate = LocalDate.of(2025, 2, 20);
+        CreateChallengeRequestDTO dto = CreateChallengeRequestDTO.builder()
+                .title("Future Run")
+                .description("Run on date")
+                .visibility(Visibility.PUBLIC)
+                .groupId(null)
+                .challengeDate(requestedDate)
+                .build();
+
+        when(challengeRepository.save(any(Challenge.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        challengeService.createChallenge(authUserId, dto);
+
+        verify(challengeRepository).save(argThat((Challenge c) ->
+                c.getChallengeDate() != null && c.getChallengeDate().equals(requestedDate)));
+        verify(dailyZone, never()).today();
+    }
+
+    // --- Daily lifecycle: list without params => only today's challenges ---
+
+    @Test
+    void getVisibleChallenges_noParams_returnsOnlyTodaysChallenges() {
+        UUID authUserId = UUID.randomUUID();
+        Challenge todayChallenge = Challenge.builder()
+                .id(UUID.randomUUID())
+                .title("Today Public")
+                .description("For today")
+                .visibility(Visibility.PUBLIC)
+                .creatorId(UUID.randomUUID())
+                .challengeDate(TEST_DATE)
+                .build();
+
+        when(dailyZone.today()).thenReturn(TEST_DATE);
+        when(groupMemberRepository.findByUserId(authUserId)).thenReturn(List.of());
+        when(challengeRepository.findByVisibilityAndChallengeDate(eq(Visibility.PUBLIC), eq(TEST_DATE)))
+                .thenReturn(List.of(todayChallenge));
+        when(challengeRepository.findByCreatorIdAndChallengeDate(eq(authUserId), eq(TEST_DATE)))
+                .thenReturn(List.of());
+
+        List<com.dailychallenge.dto.challenge.ChallengeDTO> result =
+                challengeService.getVisibleChallenges(authUserId, null);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getTitle()).isEqualTo("Today Public");
+        assertThat(result.get(0).getChallengeDate()).isEqualTo(TEST_DATE);
+        verify(challengeRepository).findByVisibilityAndChallengeDate(eq(Visibility.PUBLIC), eq(TEST_DATE));
+        verify(challengeRepository).findByCreatorIdAndChallengeDate(eq(authUserId), eq(TEST_DATE));
+    }
+
+    @Test
+    void getVisibleChallenges_noParams_oldChallengesNotReturned() {
+        UUID authUserId = UUID.randomUUID();
+
+        when(dailyZone.today()).thenReturn(TEST_DATE);
+        when(groupMemberRepository.findByUserId(authUserId)).thenReturn(List.of());
+        when(challengeRepository.findByVisibilityAndChallengeDate(eq(Visibility.PUBLIC), eq(TEST_DATE)))
+                .thenReturn(List.of());
+        when(challengeRepository.findByCreatorIdAndChallengeDate(eq(authUserId), eq(TEST_DATE)))
+                .thenReturn(List.of());
+
+        List<com.dailychallenge.dto.challenge.ChallengeDTO> result =
+                challengeService.getVisibleChallenges(authUserId, null);
+
+        assertThat(result).isEmpty();
+        verify(challengeRepository).findByVisibilityAndChallengeDate(eq(Visibility.PUBLIC), eq(TEST_DATE));
+    }
+
+    // --- Daily lifecycle: list with date => returns that date ---
+
+    @Test
+    void getVisibleChallenges_withDate_returnsThatDate() {
+        UUID authUserId = UUID.randomUUID();
+        LocalDate requestedDate = LocalDate.of(2025, 2, 10);
+        Challenge pastChallenge = Challenge.builder()
+                .id(UUID.randomUUID())
+                .title("Past Public")
+                .description("For that date")
+                .visibility(Visibility.PUBLIC)
+                .creatorId(UUID.randomUUID())
+                .challengeDate(requestedDate)
+                .build();
+
+        ChallengeQueryDTO query = ChallengeQueryDTO.builder().challengeDate(requestedDate).build();
+        when(groupMemberRepository.findByUserId(authUserId)).thenReturn(List.of());
+        when(challengeRepository.findByVisibilityAndChallengeDate(eq(Visibility.PUBLIC), eq(requestedDate)))
+                .thenReturn(List.of(pastChallenge));
+        when(challengeRepository.findByCreatorIdAndChallengeDate(eq(authUserId), eq(requestedDate)))
+                .thenReturn(List.of());
+
+        List<com.dailychallenge.dto.challenge.ChallengeDTO> result =
+                challengeService.getVisibleChallenges(authUserId, query);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getChallengeDate()).isEqualTo(requestedDate);
+        verify(challengeRepository).findByVisibilityAndChallengeDate(eq(Visibility.PUBLIC), eq(requestedDate));
+        verify(dailyZone, never()).today();
+    }
+
+    // --- Daily lifecycle: list with from/to range => returns items in range ---
+
+    @Test
+    void getVisibleChallenges_withFromTo_returnsInRange() {
+        UUID authUserId = UUID.randomUUID();
+        LocalDate from = LocalDate.of(2025, 2, 1);
+        LocalDate to = LocalDate.of(2025, 2, 10);
+        Challenge c1 = Challenge.builder()
+                .id(UUID.randomUUID())
+                .title("In Range 1")
+                .description("D1")
+                .visibility(Visibility.PUBLIC)
+                .creatorId(UUID.randomUUID())
+                .challengeDate(from)
+                .build();
+        Challenge c2 = Challenge.builder()
+                .id(UUID.randomUUID())
+                .title("In Range 2")
+                .description("D2")
+                .visibility(Visibility.PUBLIC)
+                .creatorId(UUID.randomUUID())
+                .challengeDate(to)
+                .build();
+
+        ChallengeQueryDTO query = ChallengeQueryDTO.builder()
+                .challengeDateFrom(from)
+                .challengeDateTo(to)
+                .build();
+        when(groupMemberRepository.findByUserId(authUserId)).thenReturn(List.of());
+        when(challengeRepository.findByChallengeDateBetween(eq(from), eq(to)))
+                .thenReturn(List.of(c1, c2));
+
+        List<com.dailychallenge.dto.challenge.ChallengeDTO> result =
+                challengeService.getVisibleChallenges(authUserId, query);
+
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting(com.dailychallenge.dto.challenge.ChallengeDTO::getTitle)
+                .containsExactlyInAnyOrder("In Range 1", "In Range 2");
+        verify(challengeRepository).findByChallengeDateBetween(eq(from), eq(to));
+        verify(dailyZone, never()).today();
     }
 
     // --- createChallenge: visibility and groupId ---
@@ -250,8 +426,10 @@ class ChallengeServiceTest {
                 .visibility(Visibility.PUBLIC)
                 .creatorId(authUserId)
                 .groupId(null)
+                .challengeDate(TEST_DATE)
                 .build();
 
+        when(dailyZone.today()).thenReturn(TEST_DATE);
         when(challengeRepository.save(any(Challenge.class))).thenReturn(saved);
 
         com.dailychallenge.dto.challenge.ChallengeDTO result = challengeService.createChallenge(authUserId, dto);
@@ -320,6 +498,7 @@ class ChallengeServiceTest {
                 .groupId(groupId)
                 .build();
 
+        when(dailyZone.today()).thenReturn(TEST_DATE);
         when(groupService.isMember(groupId, authUserId)).thenReturn(true);
         when(challengeRepository.save(any(Challenge.class))).thenReturn(saved);
 
