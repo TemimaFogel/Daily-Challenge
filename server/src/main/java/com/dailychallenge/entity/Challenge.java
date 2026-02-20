@@ -17,6 +17,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -44,6 +45,9 @@ public class Challenge {
     @Enumerated(EnumType.STRING)
     @Column(name = "visibility", nullable = false, length = 32)
     private Visibility visibility;
+
+    @Column(name = "challenge_date", nullable = false)
+    private LocalDate challengeDate;
 
     @Column(name = "creator_id", nullable = false)
     private UUID creatorId;

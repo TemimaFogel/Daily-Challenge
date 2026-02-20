@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
@@ -22,6 +23,8 @@ public class ChallengeDTO {
     private String title;
     private String description;
     private Visibility visibility;
+    @Schema(description = "Date this challenge is for (daily lifecycle)")
+    private LocalDate challengeDate;
     private UUID creatorId;
     private UUID groupId;
     private Instant createdAt;

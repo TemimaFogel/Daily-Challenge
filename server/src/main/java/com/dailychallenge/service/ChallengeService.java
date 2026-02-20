@@ -7,6 +7,7 @@ import com.dailychallenge.entity.Challenge;
 import com.dailychallenge.entity.Visibility;
 import com.dailychallenge.exception.ForbiddenException;
 import com.dailychallenge.exception.NotFoundException;
+import com.dailychallenge.config.DailyZone;
 import com.dailychallenge.repository.ChallengeRepository;
 import com.dailychallenge.repository.GroupMemberRepository;
 import com.dailychallenge.repository.GroupRepository;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +31,7 @@ public class ChallengeService {
     private final GroupService groupService;
     private final GroupMemberRepository groupMemberRepository;
     private final GroupRepository groupRepository;
+    private final DailyZone dailyZone;
 
     @Transactional
     public ChallengeDTO createChallenge(UUID authUserId, CreateChallengeRequestDTO dto) {
@@ -43,10 +46,12 @@ public class ChallengeService {
             groupService.assertGroupActiveForChallenge(dto.getGroupId());
         }
 
+        LocalDate challengeDate = dto.getChallengeDate() != null ? dto.getChallengeDate() : dailyZone.today();
         Challenge challenge = Challenge.builder()
                 .title(dto.getTitle().trim())
                 .description(dto.getDescription().trim())
                 .visibility(dto.getVisibility())
+                .challengeDate(challengeDate)
                 .creatorId(authUserId)
                 .groupId(dto.getVisibility() == Visibility.GROUP ? dto.getGroupId() : null)
                 .build();
@@ -56,12 +61,27 @@ public class ChallengeService {
 
     /**
      * Returns challenges visible to authUserId (PUBLIC + authUserId's PERSONAL + challenges in authUserId's groups).
-     * Query filters are applied on top of this set to prevent information leakage:
-     * - groupId: only returns results if authUserId is a member of that group; otherwise empty list.
-     * - visibility PERSONAL: only returns authUserId's personal challenges (query.creatorId ignored when not authUserId).
-     * - creatorId: applied only on the already-visible set (cannot expose other users' personal challenges).
+     * Default: only challenges for today (challengeDate = today). Optional query.challengeDate or challengeDateFrom/To for calendar/range.
+     * Query filters (visibility, creatorId, groupId) are applied on top and respect visibility rules.
      */
     public List<ChallengeDTO> getVisibleChallenges(UUID authUserId, ChallengeQueryDTO query) {
+        // Resolve date filter: single date (query.challengeDate or default today) vs range (query.challengeDateFrom/To)
+        LocalDate dateFrom;
+        LocalDate dateTo;
+        boolean useRange;
+        if (query != null && query.getChallengeDateFrom() != null && query.getChallengeDateTo() != null) {
+            dateFrom = query.getChallengeDateFrom();
+            dateTo = query.getChallengeDateTo();
+            useRange = true;
+        } else {
+            LocalDate single = (query != null && query.getChallengeDate() != null)
+                    ? query.getChallengeDate()
+                    : dailyZone.today();
+            dateFrom = single;
+            dateTo = single;
+            useRange = false;
+        }
+
         // If filtering by groupId, group must exist, not be deleted, and user must be a member; otherwise return empty.
         if (query != null && query.getGroupId() != null) {
             UUID qgId = query.getGroupId();
@@ -73,8 +93,6 @@ public class ChallengeService {
             }
         }
 
-        List<Challenge> publicList = challengeRepository.findByVisibility(Visibility.PUBLIC);
-        List<Challenge> personalList = challengeRepository.findByCreatorId(authUserId);
         List<UUID> myGroupIds = groupMemberRepository.findByUserId(authUserId).stream()
                 .map(m -> m.getGroupId())
                 .distinct()
@@ -84,9 +102,22 @@ public class ChallengeService {
                 : groupRepository.findByIdInAndDeletedAtIsNull(myGroupIds).stream()
                         .map(g -> g.getId())
                         .toList();
-        List<Challenge> groupList = activeGroupIds.isEmpty()
-                ? List.of()
-                : challengeRepository.findByGroupIdIn(activeGroupIds);
+
+        List<Challenge> publicList;
+        List<Challenge> personalList;
+        List<Challenge> groupList;
+        if (useRange) {
+            List<Challenge> inRange = challengeRepository.findByChallengeDateBetween(dateFrom, dateTo);
+            publicList = inRange.stream().filter(c -> c.getVisibility() == Visibility.PUBLIC).toList();
+            personalList = inRange.stream().filter(c -> c.getVisibility() == Visibility.PERSONAL && authUserId.equals(c.getCreatorId())).toList();
+            groupList = inRange.stream().filter(c -> c.getGroupId() != null && activeGroupIds.contains(c.getGroupId())).toList();
+        } else {
+            publicList = challengeRepository.findByVisibilityAndChallengeDate(Visibility.PUBLIC, dateFrom);
+            personalList = challengeRepository.findByCreatorIdAndChallengeDate(authUserId, dateFrom);
+            groupList = activeGroupIds.isEmpty()
+                    ? List.of()
+                    : challengeRepository.findByGroupIdInAndChallengeDate(activeGroupIds, dateFrom);
+        }
 
         List<UUID> seen = new ArrayList<>();
         Stream<Challenge> stream = Stream.concat(
@@ -101,14 +132,12 @@ public class ChallengeService {
         if (query != null) {
             if (query.getVisibility() != null) {
                 if (query.getVisibility() == Visibility.PERSONAL) {
-                    // Only allow returning personal challenges for authUserId; ignore query.creatorId for others.
                     stream = stream.filter(c -> c.getVisibility() == Visibility.PERSONAL
                             && authUserId.equals(c.getCreatorId()));
                 } else {
                     stream = stream.filter(c -> c.getVisibility() == query.getVisibility());
                 }
             }
-            // creatorId applied on already-visible set. When visibility is PERSONAL we already restricted to authUserId, so skip creatorId filter for PERSONAL to avoid overriding.
             if (query.getCreatorId() != null && query.getVisibility() != Visibility.PERSONAL) {
                 stream = stream.filter(c -> Objects.equals(c.getCreatorId(), query.getCreatorId()));
             }
@@ -184,6 +213,7 @@ public class ChallengeService {
                 .title(c.getTitle())
                 .description(c.getDescription())
                 .visibility(c.getVisibility())
+                .challengeDate(c.getChallengeDate())
                 .creatorId(c.getCreatorId())
                 .groupId(c.getGroupId())
                 .createdAt(c.getCreatedAt())

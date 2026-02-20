@@ -26,9 +26,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -71,13 +74,40 @@ public class ChallengeApiController {
     }
 
     @GetMapping
+    @Operation(summary = "List challenges", description = "Returns challenges visible to the current user. Default: today only. Optional: date=YYYY-MM-DD for a single day, or from=YYYY-MM-DD&to=YYYY-MM-DD for a range. Cannot combine date with from/to.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "List of challenges (includes challengeDate)"),
+            @ApiResponse(responseCode = "400", description = "Invalid date params: only one of from/to, or both date and from/to"),
+            @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     public ResponseEntity<List<ChallengeDTO>> getChallenges(
             @RequestParam(required = false) Visibility visibility,
             @RequestParam(required = false) UUID creatorId,
-            @RequestParam(required = false) UUID groupId) {
+            @RequestParam(required = false) UUID groupId,
+            @RequestParam(required = false, name = "date") @DateTimeFormat(iso = ISO.DATE) LocalDate date,
+            @RequestParam(required = false, name = "from") @DateTimeFormat(iso = ISO.DATE) LocalDate from,
+            @RequestParam(required = false, name = "to") @DateTimeFormat(iso = ISO.DATE) LocalDate to) {
         UUID currentUserId = requireCurrentUserId();
-        ChallengeQueryDTO query = (visibility != null || creatorId != null || groupId != null)
-                ? ChallengeQueryDTO.builder().visibility(visibility).creatorId(creatorId).groupId(groupId).build()
+
+        // Date param validation: cannot use date with from/to; from and to must be provided together
+        if (date != null && (from != null || to != null)) {
+            throw new IllegalArgumentException("Cannot use both date and from/to; use either date or both from and to.");
+        }
+        if ((from != null && to == null) || (from == null && to != null)) {
+            throw new IllegalArgumentException("Both from and to must be provided together.");
+        }
+
+        boolean hasFilter = visibility != null || creatorId != null || groupId != null
+                || date != null || (from != null && to != null);
+        ChallengeQueryDTO query = hasFilter
+                ? ChallengeQueryDTO.builder()
+                        .visibility(visibility)
+                        .creatorId(creatorId)
+                        .groupId(groupId)
+                        .challengeDate(date)
+                        .challengeDateFrom(from)
+                        .challengeDateTo(to)
+                        .build()
                 : null;
         List<ChallengeDTO> challenges = challengeService.getVisibleChallenges(currentUserId, query);
         return ResponseEntity.ok(challenges);

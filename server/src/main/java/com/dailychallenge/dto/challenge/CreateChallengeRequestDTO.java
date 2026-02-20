@@ -11,6 +11,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
@@ -36,6 +37,9 @@ public class CreateChallengeRequestDTO {
 
     @Schema(description = "Required only when visibility=GROUP; choose from GET /api/groups/my. Ignored when visibility is PERSONAL or PUBLIC.")
     private UUID groupId;
+
+    @Schema(description = "Optional challenge date (ISO date). If omitted, set to today in app timezone.")
+    private LocalDate challengeDate;
 
     @AssertTrue(message = "Group ID is required when visibility is GROUP")
     public boolean isGroupIdPresentWhenGroup() {
