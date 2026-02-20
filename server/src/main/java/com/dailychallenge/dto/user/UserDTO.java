@@ -17,4 +17,5 @@ public class UserDTO {
     private String email;
     private String name;
     private String timezone;
+    private String profileImageUrl;
 }

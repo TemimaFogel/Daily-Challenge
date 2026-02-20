@@ -42,6 +42,9 @@ public class User {
     @Column(name = "timezone", nullable = false, length = 100)
     private String timezone;
 
+    @Column(name = "profile_image_url", length = 512)
+    private String profileImageUrl;
+
     @OneToMany(mappedBy = "owner")
     private List<Group> groups = new ArrayList<>();
 

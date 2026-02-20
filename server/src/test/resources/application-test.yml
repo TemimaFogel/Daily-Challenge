@@ -1,0 +1,7 @@
+# Test profile: temp uploads dir (override in test with @DynamicPropertySource), JWT secret for tests
+app:
+  jwt:
+    secret: test-secret-min-256-bits-for-hs256-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  uploads:
+    # Overridden by ProfileImageIntegrationTest to use temp dir
+    dir: ./target/test-uploads

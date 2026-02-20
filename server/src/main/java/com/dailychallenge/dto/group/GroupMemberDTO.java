@@ -17,5 +17,6 @@ public class GroupMemberDTO {
     private UUID userId;
     private String name;
     private String email;
+    private String profileImageUrl;
     private Instant joinedAt;
 }
