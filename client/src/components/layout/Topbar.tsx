@@ -1,4 +1,4 @@
-import { useLocation, useNavigate, Link } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { Bell, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { useCurrentUser, getDisplayName } from "@/hooks/useCurrentUser";
-import { authStore } from "@/auth/authStore";
+import { useAuth } from "@/auth/AuthContext";
 
 interface TopbarProps {
   /** Override title (e.g. from page); when not set, derived from route */
@@ -25,20 +25,14 @@ interface TopbarProps {
 
 export function Topbar({ title, actions, onMenuClick, className }: TopbarProps) {
   const location = useLocation();
-  const navigate = useNavigate();
   const pageTitle = title ?? getPageTitle(location.pathname);
+  const { currentUser, logout } = useAuth();
   const { data: user, isLoading: userLoading } = useCurrentUser();
-  const isLoggedIn = authStore.isAuthenticated();
 
   const displayName = user
     ? getDisplayName(user.name, user.email)
     : "User";
   const profileImageUrl = user?.profileImageUrl;
-
-  const handleLogout = () => {
-    authStore.clearToken();
-    navigate("/login", { replace: true });
-  };
 
   return (
     <header
@@ -68,7 +62,7 @@ export function Topbar({ title, actions, onMenuClick, className }: TopbarProps) 
         <Button variant="ghost" size="icon" aria-label="Notifications">
           <Bell className="size-5" />
         </Button>
-        {isLoggedIn ? (
+        {currentUser ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-full">
               <button
@@ -94,17 +88,25 @@ export function Topbar({ title, actions, onMenuClick, className }: TopbarProps) 
               <DropdownMenuItem asChild>
                 <Link to="/settings">Settings</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleLogout}>
+              <DropdownMenuItem onSelect={logout}>
                 Logout
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <div
-            className="flex size-9 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground"
-            aria-hidden
-          >
-            U
+          <div className="flex items-center gap-2">
+            <Link
+              to="/login"
+              className="inline-flex h-8 items-center justify-center rounded-sm px-3 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              Sign In
+            </Link>
+            <Link
+              to="/register"
+              className="inline-flex h-8 items-center justify-center rounded-sm px-3 text-xs font-medium bg-primary text-primary-foreground shadow-sm hover:opacity-95"
+            >
+              Sign Up
+            </Link>
           </div>
         )}
       </div>

@@ -39,6 +39,18 @@ export interface Challenge {
   creatorId: string;
   groupId: string | null;
   createdAt: string;
+  /** Set by client when user has joined (from dashboard or optimistic update). */
+  isJoined?: boolean;
+  /** Set by client when user has completed today (from cache after complete mutation or 409). */
+  completedToday?: boolean;
+}
+
+/** User who completed a challenge on a given date (from GET /api/challenges/:id/completions). */
+export interface CompletionUser {
+  id: string;
+  name: string;
+  email?: string | null;
+  profileImageUrl?: string | null;
 }
 
 export interface ChallengeStats {

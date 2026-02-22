@@ -100,7 +100,7 @@ export function InvitationsPage() {
         </div>
       )}
 
-      <PageHeader title="Invitations" />
+      <PageHeader title="Invitations" hideTitle />
 
       <div className="border-b border-border mb-6">
         <nav className="flex gap-1" aria-label="Tabs">

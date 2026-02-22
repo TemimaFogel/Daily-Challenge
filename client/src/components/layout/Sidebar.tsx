@@ -1,9 +1,8 @@
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { authStore } from "@/auth/authStore";
+import { useAuth } from "@/auth/AuthContext";
 import {
   SIDEBAR_NAV_ITEMS,
   NAV_SIGN_IN,
@@ -27,18 +26,10 @@ interface SidebarProps {
 }
 
 export function Sidebar({ className, inline }: SidebarProps) {
-  const navigate = useNavigate();
   const location = useLocation();
-  const queryClient = useQueryClient();
-  const isLoggedIn = authStore.isAuthenticated();
+  const { currentUser, logout } = useAuth();
 
   const isDashboardActive = location.pathname === "/" || location.pathname === "/dashboard";
-
-  const handleLogout = () => {
-    queryClient.clear();
-    authStore.clearToken();
-    navigate("/login", { replace: true });
-  };
 
   const content = (
     <>
@@ -71,7 +62,16 @@ export function Sidebar({ className, inline }: SidebarProps) {
       </nav>
       <div className="shrink-0 p-4">
         <Separator className="mb-4" />
-        {!isLoggedIn ? (
+        {currentUser ? (
+          <Button
+            variant="ghost"
+            className={cn(navLinkBase, "w-full justify-start text-muted-foreground hover:bg-muted/80 hover:text-foreground")}
+            onClick={logout}
+          >
+            <NAV_LOGOUT.icon className="size-5 shrink-0" />
+            {NAV_LOGOUT.label}
+          </Button>
+        ) : (
           <div className="flex flex-col gap-1">
             <NavLink
               to={NAV_SIGN_IN.to}
@@ -98,15 +98,6 @@ export function Sidebar({ className, inline }: SidebarProps) {
               {NAV_SIGN_UP.label}
             </NavLink>
           </div>
-        ) : (
-          <Button
-            variant="ghost"
-            className={cn(navLinkBase, "w-full justify-start text-muted-foreground hover:bg-muted/80 hover:text-foreground")}
-            onClick={handleLogout}
-          >
-            <NAV_LOGOUT.icon className="size-5 shrink-0" />
-            {NAV_LOGOUT.label}
-          </Button>
         )}
       </div>
     </>

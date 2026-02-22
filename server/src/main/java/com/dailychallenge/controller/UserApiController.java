@@ -1,6 +1,7 @@
 package com.dailychallenge.controller;
 
 import com.dailychallenge.dto.user.ProfileImageResponseDTO;
+import com.dailychallenge.dto.user.UpdateUserRequestDTO;
 import com.dailychallenge.dto.user.UserDTO;
 import com.dailychallenge.dto.user.UserSearchResultDTO;
 import com.dailychallenge.exception.NotFoundException;
@@ -21,11 +22,15 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.validation.Valid;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -67,6 +72,27 @@ public class UserApiController {
                 .map(userMapper::toDTO)
                 .orElseThrow(() -> new NotFoundException("User not found"));
         return ResponseEntity.ok(dto);
+    }
+
+    @PatchMapping("/me")
+    @Operation(summary = "Update current user", description = "Partially update the authenticated user's profile (name, timezone). Only provided fields are updated.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Updated user profile"),
+            @ApiResponse(responseCode = "400", description = "Validation error"),
+            @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
+    public ResponseEntity<UserDTO> updateCurrentUser(@Valid @RequestBody UpdateUserRequestDTO request) {
+        UUID currentUserId = requireCurrentUserId();
+        com.dailychallenge.entity.User user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        if (request.getName() != null && !request.getName().isBlank()) {
+            user.setName(request.getName().trim());
+        }
+        if (request.getTimezone() != null && !request.getTimezone().isBlank()) {
+            user.setTimezone(request.getTimezone().trim());
+        }
+        user = userRepository.save(user);
+        return ResponseEntity.ok(userMapper.toDTO(user));
     }
 
     @PostMapping(value = "/me/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

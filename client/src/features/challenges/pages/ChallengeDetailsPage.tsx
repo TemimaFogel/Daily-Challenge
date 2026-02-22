@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -7,12 +7,15 @@ import { LoadingSkeleton } from "@/components/ui/LoadingSkeleton";
 import {
   useChallenge,
   useChallengeStats,
+  useChallengeCompletions,
   useJoinChallenge,
   useCompleteChallenge,
+  usePersonalDashboard,
 } from "../hooks/useChallenges";
 import { ChallengeStatsCard } from "../components/ChallengeStatsCard";
 import { AvatarStack } from "../components/AvatarStack";
 import { formatDateSafe } from "../api/mappers";
+import { resolveApiUrl } from "@/lib/urls";
 
 function BellIcon() {
   return (
@@ -22,21 +25,41 @@ function BellIcon() {
   );
 }
 
+type LocationState = { from?: string; date?: string } | null;
+
 export function ChallengeDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const state = (location.state as LocationState) ?? null;
+  const fromHistory = state?.from === "history";
+  const historyDate = state?.date ?? null;
+
   const { data: challenge, isLoading: loadingChallenge, error } = useChallenge(id);
 
   const handleBack = () => {
-    if (window.history.length > 1) {
+    if (fromHistory) {
+      navigate("/history", { state: historyDate ? { selectedDate: historyDate } : undefined });
+    } else if (window.history.length > 1) {
       navigate(-1);
     } else {
       navigate("/challenges");
     }
   };
   const { data: stats, isLoading: loadingStats } = useChallengeStats(id);
+  const { data: completionsToday = [], isLoading: loadingCompletions } = useChallengeCompletions(id);
+  const { data: dashboard } = usePersonalDashboard();
   const join = useJoinChallenge();
   const complete = useCompleteChallenge();
+
+  const isJoined =
+    challenge?.isJoined === true ||
+    (id != null &&
+      (dashboard?.challenges ?? []).some(
+        (c) => c.challenge?.id != null && String(c.challenge.id) === id
+      ));
+
+  const completedToday = challenge?.completedToday === true;
 
   const joinError409 =
     join.isError &&
@@ -58,6 +81,7 @@ export function ChallengeDetailsPage() {
     complete.error !== null &&
     "response" in complete.error &&
     (complete.error as { response?: { status?: number } }).response?.status === 409;
+  const completeIsAlreadyDone = completedToday || completeError409;
 
   const headerActions = (
     <div className="flex items-center gap-2">
@@ -99,19 +123,13 @@ export function ChallengeDetailsPage() {
   }
 
   const hasDate = challenge.challengeDate != null && challenge.challengeDate.trim() !== "";
-  const winnersForAvatars =
-    stats != null && Array.isArray(stats.winnersNames) && stats.winnersNames.length > 0
-      ? stats.winnersNames.map((name) => ({ name, imageUrl: null as string | null }))
+  const completionItems =
+    completionsToday.length > 0
+      ? completionsToday.map((u) => ({
+          name: u.name || "—",
+          imageUrl: resolveApiUrl(u.profileImageUrl) ?? null,
+        }))
       : [];
-  const participantCount = stats?.participantsCount ?? 0;
-  const showPlaceholderParticipants =
-    winnersForAvatars.length === 0 && participantCount > 0;
-  const placeholderItems = showPlaceholderParticipants
-    ? Array.from({ length: Math.min(participantCount, 5) }, () => ({
-        name: "",
-        imageUrl: null as string | null,
-      }))
-    : [];
 
   return (
     <AppLayout title={challenge.title} headerActions={headerActions}>
@@ -120,10 +138,10 @@ export function ChallengeDetailsPage() {
           type="button"
           onClick={handleBack}
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Back to Challenges"
+          aria-label={fromHistory ? "Back to History" : "Back to Challenges"}
         >
           <ArrowLeft className="size-4 shrink-0" />
-          Back to Challenges
+          {fromHistory ? "Back to History" : "Back to Challenges"}
         </button>
       </div>
 
@@ -152,54 +170,73 @@ export function ChallengeDetailsPage() {
                 </p>
               )}
 
-              {(winnersForAvatars.length > 0 || showPlaceholderParticipants) && (
+              <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <AvatarStack
-                    items={winnersForAvatars.length > 0 ? winnersForAvatars : placeholderItems}
-                    max={5}
-                    size="md"
-                  />
-                  {winnersForAvatars.length > 5 && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                      +{winnersForAvatars.length - 5} more
-                    </span>
-                  )}
-                  {showPlaceholderParticipants && participantCount > 5 && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                      +{participantCount - 5} more
-                    </span>
-                  )}
+                  <h3 className="text-sm font-semibold text-foreground">Completed Today</h3>
+                  <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-xs font-medium">
+                    {loadingCompletions ? "…" : completionsToday.length}
+                  </span>
                 </div>
-              )}
-
-              <div className="flex flex-wrap gap-2 pt-2">
-                <Button
-                  className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 border-0"
-                  onClick={() => join.mutate(challenge.id)}
-                  disabled={join.isPending}
-                >
-                  {join.isPending ? "Joining…" : "Join"}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => complete.mutate(challenge.id)}
-                  disabled={complete.isPending}
-                >
-                  {complete.isPending ? "…" : "Complete for Today"}
-                </Button>
+                {loadingCompletions ? (
+                  <p className="text-sm text-muted-foreground">Loading…</p>
+                ) : completionsToday.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No one has completed yet today.
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <AvatarStack items={completionItems} max={8} size="md" />
+                    <ul className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                      {completionsToday.map((u) => (
+                        <li key={u.id} className="flex items-center gap-1.5">
+                          <span
+                            className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground"
+                            aria-hidden
+                          >
+                            {u.name ? u.name.charAt(0).toUpperCase() : "?"}
+                          </span>
+                          {u.name || "—"}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
-              {joinError409 && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                {!isJoined && (
+                  <Button
+                    className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 border-0"
+                    onClick={() => join.mutate(challenge.id)}
+                    disabled={join.isPending}
+                  >
+                    {join.isPending ? "Joining…" : "Join"}
+                  </Button>
+                )}
+                {completeIsAlreadyDone ? (
+                  <Button
+                    className="bg-emerald-600 text-white hover:bg-emerald-600 border-0 cursor-default"
+                    disabled
+                  >
+                    Completed Today
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => complete.mutate(challenge.id)}
+                    disabled={complete.isPending}
+                  >
+                    {complete.isPending ? "…" : "Complete for Today"}
+                  </Button>
+                )}
+              </div>
+
+              {joinError409 && !isJoined && (
                 <p className="text-sm text-muted-foreground">Already joined.</p>
               )}
               {completeError403 && (
                 <p className="text-sm text-amber-600 dark:text-amber-500">
                   Join required before completing.
-                </p>
-              )}
-              {completeError409 && (
-                <p className="text-sm text-muted-foreground">
-                  Already completed today.
                 </p>
               )}
             </CardContent>

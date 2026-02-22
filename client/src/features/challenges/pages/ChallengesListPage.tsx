@@ -1,13 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Button } from "@/components/ui/button";
 import { CardSkeleton } from "@/components/ui/LoadingSkeleton";
-import { useChallengesList, useJoinChallenge } from "../hooks/useChallenges";
+import { useChallengesList, useJoinChallenge, usePersonalDashboard } from "../hooks/useChallenges";
 import { ChallengeCard } from "../components/ChallengeCard";
 import { ChallengeFilters } from "../components/ChallengeFilters";
-import type { ChallengeListParams } from "../types";
+import { CreateChallengeDialog } from "../components/CreateChallengeDialog";
+import type { Challenge, ChallengeListParams } from "../types";
 
 function SearchIcon() {
   return (
@@ -29,19 +29,53 @@ export function ChallengesListPage() {
   const [params, setParams] = useState<ChallengeListParams>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const { data: challenges = [], isLoading, error } = useChallengesList(params);
+  const { data: dashboard } = usePersonalDashboard();
   const join = useJoinChallenge();
+
+  const dashboardChallengeIds = useMemo(
+    () =>
+      new Set(
+        (dashboard?.challenges ?? [])
+          .map((i) => i.challenge?.id)
+          .filter(Boolean)
+          .map(String)
+      ),
+    [dashboard?.challenges]
+  );
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return challenges;
-    return challenges.filter(
-      (c) =>
-        (c.title ?? "").toLowerCase().includes(q) ||
-        (c.description ?? "").toLowerCase().includes(q)
-    );
-  }, [challenges, searchQuery]);
+    const list = q
+      ? challenges.filter(
+          (c) =>
+            (c.title ?? "").toLowerCase().includes(q) ||
+            (c.description ?? "").toLowerCase().includes(q)
+        )
+      : challenges;
+    return list.map((c) => ({
+      ...c,
+      isJoined: !!c.isJoined || dashboardChallengeIds.has(c.id),
+    }));
+  }, [challenges, searchQuery, dashboardChallengeIds]);
+
+  const activeChallenges = useMemo(
+    () => (filtered as Challenge[]).filter((c) => c.isJoined),
+    [filtered]
+  );
+  const availableChallenges = useMemo(
+    () => (filtered as Challenge[]).filter((c) => !c.isJoined),
+    [filtered]
+  );
 
   const handleJoin = (id: string) => {
     setJoiningId(id);
@@ -90,8 +124,21 @@ export function ChallengesListPage() {
   );
 
   return (
-    <AppLayout title="Challenges List" headerActions={headerActions}>
-      <PageHeader title="Challenges List" />
+    <AppLayout title="Challenges" headerActions={headerActions}>
+      {toast && (
+        <div
+          role="status"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-md bg-foreground text-background px-4 py-2 text-sm shadow-lg"
+        >
+          {toast}
+        </div>
+      )}
+      <CreateChallengeDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={(message) => setToast(message)}
+      />
+      <PageHeader title="Challenges" hideTitle />
 
       <ChallengeFilters
         visibility={params.visibility}
@@ -117,25 +164,65 @@ export function ChallengesListPage() {
           description="Try changing the filter or search."
         />
       ) : (
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-          {filtered.map((c) => (
-            <ChallengeCard
-              key={c.id}
-              challenge={c}
-              onJoin={handleJoin}
-              joinLoading={join.isPending && joiningId === c.id}
-              joinError={
-                joiningId === c.id && joinError409 ? "already_joined" : null
-              }
-            />
-          ))}
+        <div className="space-y-8">
+          <section>
+            <h2 className="text-base font-semibold text-foreground mb-3">
+              Your Active Challenges
+            </h2>
+            {activeChallenges.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 rounded-xl bg-muted/30 border border-dashed border-border text-center">
+                No active challenges yet. Join one below.
+              </p>
+            ) : (
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+                {activeChallenges.map((c) => (
+                  <ChallengeCard
+                    key={c.id}
+                    challenge={c}
+                    isJoined={true}
+                    onJoin={handleJoin}
+                    joinLoading={join.isPending && joiningId === c.id}
+                    joinError={
+                      joiningId === c.id && joinError409 ? "already_joined" : null
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+          <section>
+            <h2 className="text-base font-semibold text-foreground mb-3">
+              Explore Challenges
+            </h2>
+            {availableChallenges.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">
+                No more challenges to join for this filter.
+              </p>
+            ) : (
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+                {availableChallenges.map((c) => (
+                  <ChallengeCard
+                    key={c.id}
+                    challenge={c}
+                    isJoined={false}
+                    onJoin={handleJoin}
+                    joinLoading={join.isPending && joiningId === c.id}
+                    joinError={
+                      joiningId === c.id && joinError409 ? "already_joined" : null
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       )}
 
       <button
         type="button"
+        onClick={() => setCreateDialogOpen(true)}
         className="fixed bottom-6 right-6 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:opacity-90 transition-opacity"
-        aria-label="Add challenge"
+        aria-label="Create new challenge"
       >
         <PlusIcon />
       </button>

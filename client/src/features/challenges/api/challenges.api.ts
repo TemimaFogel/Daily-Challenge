@@ -6,7 +6,21 @@ import {
   mapChallengeStatsFromApi,
   mapGroupOptionFromApi,
 } from "./mappers";
-import type { Challenge, ChallengeStats, GroupOption } from "../types";
+import type { Challenge, ChallengeStats, GroupOption, CompletionUser } from "../types";
+
+function mapCompletionUserFromApi(d: {
+  id?: string | null;
+  name?: string | null;
+  email?: string | null;
+  profileImageUrl?: string | null;
+}): CompletionUser {
+  return {
+    id: d.id != null ? String(d.id) : "",
+    name: d.name != null ? String(d.name) : "",
+    email: d.email != null ? String(d.email) : null,
+    profileImageUrl: d.profileImageUrl != null && String(d.profileImageUrl).trim() !== "" ? String(d.profileImageUrl) : null,
+  };
+}
 
 const BASE = "/api/challenges";
 
@@ -59,6 +73,14 @@ export const challengesApi = {
 
   complete(id: string): Promise<void> {
     return http.post(`${BASE}/${id}/complete`).then(() => undefined);
+  },
+
+  /** GET /api/challenges/:id/completions?date=YYYY-MM-DD (date optional, defaults to today). */
+  getCompletions(id: string, date?: string): Promise<CompletionUser[]> {
+    const params = date != null && date.trim() !== "" ? { date: date.trim() } : {};
+    return http
+      .get<CompletionUser[]>(`${BASE}/${id}/completions`, { params })
+      .then((r) => (Array.isArray(r.data) ? r.data : []).map(mapCompletionUserFromApi));
   },
 
   delete(id: string): Promise<void> {

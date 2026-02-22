@@ -25,7 +25,7 @@ export function GroupsPage() {
 
   return (
     <AppLayout>
-      <PageHeader title="My Groups" />
+      <PageHeader title="My Groups" hideTitle />
       {toast && (
         <div
           role="status"

@@ -3,6 +3,7 @@ package com.dailychallenge.controller;
 import com.dailychallenge.dto.challenge.ChallengeDTO;
 import com.dailychallenge.dto.challenge.ChallengeQueryDTO;
 import com.dailychallenge.dto.challenge.ChallengeStatsDTO;
+import com.dailychallenge.dto.challenge.CompletionUserDTO;
 import com.dailychallenge.dto.challenge.CreateChallengeRequestDTO;
 import com.dailychallenge.dto.group.GroupOptionDTO;
 import com.dailychallenge.entity.Visibility;
@@ -32,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -132,6 +134,23 @@ public class ChallengeApiController {
         UUID currentUserId = requireCurrentUserId();
         ChallengeStatsDTO stats = statsService.buildChallengeStats(currentUserId, id);
         return ResponseEntity.ok(stats);
+    }
+
+    @GetMapping("/{id}/completions")
+    @Operation(summary = "List users who completed this challenge on a date", description = "Same visibility as challenge. Optional date=YYYY-MM-DD; defaults to today (server timezone).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "List of users (id, name, email, profileImageUrl)"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Not allowed to view this challenge"),
+            @ApiResponse(responseCode = "404", description = "Challenge not found")
+    })
+    public ResponseEntity<List<CompletionUserDTO>> getCompletions(
+            @PathVariable("id") UUID id,
+            @RequestParam(required = false, name = "date") @DateTimeFormat(iso = ISO.DATE) LocalDate date) {
+        UUID currentUserId = requireCurrentUserId();
+        LocalDate targetDate = date != null ? date : LocalDate.now(ZoneId.systemDefault());
+        List<CompletionUserDTO> list = completionService.getCompletionsForDate(currentUserId, id, targetDate);
+        return ResponseEntity.ok(list);
     }
 
     @DeleteMapping("/{id}")

@@ -1,5 +1,6 @@
 package com.dailychallenge.service;
 
+import com.dailychallenge.dto.challenge.CompletionUserDTO;
 import com.dailychallenge.entity.ChallengeCompletion;
 import com.dailychallenge.exception.ConflictException;
 import com.dailychallenge.exception.ForbiddenException;
@@ -12,7 +13,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Completion date is based on user's timezone (from User entity). If missing/invalid, server date is used.
@@ -53,5 +57,25 @@ public class CompletionService {
 
     public boolean hasCompletedOnDate(UUID authUserId, UUID challengeId, LocalDate date) {
         return completionRepository.existsByChallengeIdAndUserIdAndCompletionDate(challengeId, authUserId, date);
+    }
+
+    /**
+     * Returns users who completed the challenge on the given date. Enforces same visibility as challenge (PUBLIC / GROUP / PERSONAL).
+     */
+    public List<CompletionUserDTO> getCompletionsForDate(UUID authUserId, UUID challengeId, LocalDate date) {
+        challengeService.assertUserCanJoin(authUserId, challengeId);
+        return completionRepository.findByChallengeIdAndCompletionDate(challengeId, date).stream()
+                .map(ChallengeCompletion::getUserId)
+                .distinct()
+                .map(userRepository::findById)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(u -> CompletionUserDTO.builder()
+                        .id(u.getId())
+                        .name(u.getName())
+                        .email(u.getEmail())
+                        .profileImageUrl(u.getProfileImageUrl())
+                        .build())
+                .collect(Collectors.toList());
     }
 }

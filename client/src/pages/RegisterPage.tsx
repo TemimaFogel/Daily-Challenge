@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { register } from "@/api/auth.api";
-import { authStore } from "@/auth/authStore";
+import { useAuth } from "@/auth/AuthContext";
 
 const MailIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -43,6 +43,7 @@ const ArrowRightIcon = () => (
 export function RegisterPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { login: authLogin } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -80,10 +81,11 @@ export function RegisterPage() {
       const data = await register(email, password, name, timezone);
       const token = data?.token ?? data?.accessToken;
       if (token) {
-        authStore.setToken(token);
         const user = data?.user;
         if (user?.id != null) {
-          authStore.setCurrentUser({ id: String(user.id), email: user.email });
+          authLogin(token, { id: String(user.id), email: user.email });
+        } else {
+          authLogin(token, { id: "", email: undefined });
         }
         queryClient.invalidateQueries({ queryKey: ["invites"] });
         queryClient.invalidateQueries({ queryKey: ["groups", "my"] });

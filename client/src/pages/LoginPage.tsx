@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { login } from "@/api/auth.api";
-import { authStore } from "@/auth/authStore";
+import { useAuth } from "@/auth/AuthContext";
 
 const MailIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -34,6 +34,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const { login: authLogin } = useAuth();
   const successMessage = (location.state as { message?: string } | null)?.message;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -54,9 +55,10 @@ export function LoginPage() {
     setLoading(true);
     try {
       const { token, user } = await login(email, password);
-      authStore.setToken(token);
       if (user?.id != null) {
-        authStore.setCurrentUser({ id: String(user.id), email: user.email });
+        authLogin(token, { id: String(user.id), email: user.email });
+      } else {
+        authLogin(token, { id: "", email: undefined });
       }
       queryClient.invalidateQueries({ queryKey: ["invites"] });
       queryClient.invalidateQueries({ queryKey: ["groups", "my"] });

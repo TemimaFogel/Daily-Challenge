@@ -18,4 +18,6 @@ public interface CompletionRepository extends JpaRepository<ChallengeCompletion,
     long countByUserId(UUID userId);
 
     List<ChallengeCompletion> findByChallengeId(UUID challengeId);
+
+    List<ChallengeCompletion> findByChallengeIdAndCompletionDate(UUID challengeId, LocalDate completionDate);
 }

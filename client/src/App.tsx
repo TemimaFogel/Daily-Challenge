@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/auth/AuthContext";
 import { HomePage } from "@/pages/HomePage";
 import { DemoPage } from "@/pages/DemoPage";
 import { LoginPage } from "@/pages/LoginPage";
@@ -12,10 +13,13 @@ import {
 } from "@/features/challenges";
 import { GroupsPage, GroupDetailsPage, GroupManagePage } from "@/features/groups";
 import { InvitationsPage } from "@/features/invitations";
+import { HistoryPage } from "@/features/history";
+import { SettingsPage } from "@/features/settings";
 
 function App() {
   return (
     <BrowserRouter>
+      <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -30,10 +34,11 @@ function App() {
           <Route path="/groups/:id" element={<GroupDetailsPage />} />
           <Route path="/groups/:id/manage" element={<GroupManagePage />} />
           <Route path="/invitations" element={<InvitationsPage />} />
-          <Route path="/history" element={<PlaceholderPage title="History" />} />
-          <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
+          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

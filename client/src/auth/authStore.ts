@@ -4,6 +4,7 @@ const USER_KEY = "auth_user";
 export interface AuthUser {
   id: string;
   email?: string;
+  name?: string;
 }
 
 function getStoredToken(): string | null {
@@ -18,8 +19,10 @@ function getStoredUser(): AuthUser | null {
   try {
     const raw = localStorage.getItem(USER_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { id?: string; email?: string };
-    return parsed?.id != null ? { id: String(parsed.id), email: parsed.email } : null;
+    const parsed = JSON.parse(raw) as { id?: string; email?: string; name?: string };
+    return parsed?.id != null
+      ? { id: String(parsed.id), email: parsed.email, name: parsed.name }
+      : null;
   } catch {
     return null;
   }
@@ -51,7 +54,10 @@ export const authStore = {
       if (user == null) {
         localStorage.removeItem(USER_KEY);
       } else {
-        localStorage.setItem(USER_KEY, JSON.stringify({ id: user.id, email: user.email }));
+        localStorage.setItem(
+          USER_KEY,
+          JSON.stringify({ id: user.id, email: user.email, name: user.name })
+        );
       }
     } catch {
       // ignore

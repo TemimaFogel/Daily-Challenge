@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 interface PageHeaderProps {
   title?: string;
   description?: string;
+  /** When true, do not render the title (e.g. when Topbar already shows it). Subtitle and actions still render. */
+  hideTitle?: boolean;
   actions?: ReactNode;
   className?: string;
 }
@@ -11,10 +13,12 @@ interface PageHeaderProps {
 export function PageHeader({
   title,
   description,
+  hideTitle,
   actions,
   className,
 }: PageHeaderProps) {
-  const hasHeading = title != null || description != null;
+  const showTitle = title != null && !hideTitle;
+  const hasHeading = showTitle || description != null;
   return (
     <div
       className={cn(
@@ -25,7 +29,7 @@ export function PageHeader({
     >
       {hasHeading && (
       <div>
-        {title != null && (
+        {showTitle && (
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             {title}
           </h1>
