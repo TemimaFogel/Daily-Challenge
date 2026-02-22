@@ -1,4 +1,5 @@
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -28,11 +29,13 @@ interface SidebarProps {
 export function Sidebar({ className, inline }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const isLoggedIn = authStore.isAuthenticated();
 
   const isDashboardActive = location.pathname === "/" || location.pathname === "/dashboard";
 
   const handleLogout = () => {
+    queryClient.clear();
     authStore.clearToken();
     navigate("/login", { replace: true });
   };

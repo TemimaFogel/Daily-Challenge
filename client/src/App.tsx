@@ -11,6 +11,7 @@ import {
   CreateChallengePage,
 } from "@/features/challenges";
 import { GroupsPage, GroupDetailsPage, GroupManagePage } from "@/features/groups";
+import { InvitationsPage } from "@/features/invitations";
 
 function App() {
   return (
@@ -28,7 +29,7 @@ function App() {
           <Route path="/groups" element={<GroupsPage />} />
           <Route path="/groups/:id" element={<GroupDetailsPage />} />
           <Route path="/groups/:id/manage" element={<GroupManagePage />} />
-          <Route path="/invitations" element={<PlaceholderPage title="Invitations" />} />
+          <Route path="/invitations" element={<InvitationsPage />} />
           <Route path="/history" element={<PlaceholderPage title="History" />} />
           <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
         </Route>

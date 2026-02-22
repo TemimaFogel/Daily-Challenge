@@ -2,6 +2,10 @@ package com.dailychallenge.service;
 
 import com.dailychallenge.dto.group.GroupInviteViewDTO;
 import com.dailychallenge.dto.group.InviteDTO;
+import com.dailychallenge.dto.group.InviteGroupDTO;
+import com.dailychallenge.dto.group.InvitePreviewDTO;
+import com.dailychallenge.dto.group.InvitePreviewGroupDTO;
+import com.dailychallenge.dto.group.InvitePreviewMemberDTO;
 import com.dailychallenge.dto.group.InviteRequestDTO;
 import com.dailychallenge.dto.group.InvitedUserViewDTO;
 import com.dailychallenge.entity.Group;
@@ -69,14 +73,68 @@ public class InviteService {
                 .build();
         invite = groupInviteRepository.save(invite);
 
-        return toInviteDTO(invite, invitedUser.getEmail());
+        Group savedGroup = groupRepository.findById(groupId).orElse(null);
+        return toInviteDTO(invite, invitedUser.getEmail(), savedGroup);
+    }
+
+    /**
+     * Preview group and members for a pending invite. Only the invite recipient may access.
+     * Returns 403 if not the recipient or if invite is DECLINED. 404 if invite or group not found.
+     */
+    public InvitePreviewDTO getInvitePreview(UUID inviteId, UUID currentUserId) {
+        GroupInvite invite = groupInviteRepository.findById(inviteId)
+                .orElseThrow(() -> new NotFoundException("Invite not found"));
+        if (!invite.getInvitedUserId().equals(currentUserId)) {
+            throw new ForbiddenException("Only the invite recipient can preview this invite");
+        }
+        if (invite.getStatus() == GroupInviteStatus.DECLINED) {
+            throw new ForbiddenException("Cannot preview a declined invite");
+        }
+        Group group = groupRepository.findById(invite.getGroupId())
+                .orElseThrow(() -> new NotFoundException("Group not found"));
+        if (group.getDeletedAt() != null) {
+            throw new NotFoundException("Group not found");
+        }
+        int memberCount = (int) groupMemberRepository.countByGroupId(group.getId());
+        InvitePreviewGroupDTO groupDto = InvitePreviewGroupDTO.builder()
+                .id(group.getId())
+                .name(group.getName())
+                .description(group.getDescription())
+                .memberCount(memberCount)
+                .build();
+        List<GroupMember> members = groupMemberRepository.findByGroupIdWithUser(group.getId());
+        List<InvitePreviewMemberDTO> memberDtos = members.stream()
+                .map(m -> {
+                    User u = m.getUser();
+                    return InvitePreviewMemberDTO.builder()
+                            .id(m.getUserId())
+                            .name(u != null ? u.getName() : null)
+                            .email(u != null ? u.getEmail() : null)
+                            .profileImageUrl(u != null ? u.getProfileImageUrl() : null)
+                            .build();
+                })
+                .collect(Collectors.toList());
+        return InvitePreviewDTO.builder()
+                .group(groupDto)
+                .members(memberDtos)
+                .build();
     }
 
     public List<InviteDTO> listMyInvites(UUID currentUserId) {
         List<GroupInvite> invites = groupInviteRepository.findByInvitedUserIdAndStatus(
                 currentUserId, GroupInviteStatus.PENDING);
+        if (invites.isEmpty()) {
+            return List.of();
+        }
+        List<UUID> groupIds = invites.stream()
+                .map(GroupInvite::getGroupId)
+                .distinct()
+                .toList();
+        List<Group> groups = groupRepository.findByIdInAndDeletedAtIsNull(groupIds);
+        java.util.Map<UUID, Group> groupMap = groups.stream()
+                .collect(Collectors.toMap(Group::getId, g -> g));
         return invites.stream()
-                .map(inv -> toInviteDTO(inv, getInvitedUserEmail(inv)))
+                .map(inv -> toInviteDTO(inv, getInvitedUserEmail(inv), groupMap.get(inv.getGroupId())))
                 .collect(Collectors.toList());
     }
 
@@ -92,7 +150,7 @@ public class InviteService {
         }
         List<GroupInvite> invites = groupInviteRepository.findByGroupId(groupId);
         return invites.stream()
-                .map(inv -> toInviteDTO(inv, getInvitedUserEmail(inv)))
+                .map(inv -> toInviteDTO(inv, getInvitedUserEmail(inv), group))
                 .collect(Collectors.toList());
     }
 
@@ -158,7 +216,8 @@ public class InviteService {
         invite.setStatus(GroupInviteStatus.APPROVED);
         invite = groupInviteRepository.save(invite);
 
-        return toInviteDTO(invite, getInvitedUserEmail(invite));
+        Group group = groupRepository.findById(invite.getGroupId()).orElse(null);
+        return toInviteDTO(invite, getInvitedUserEmail(invite), group);
     }
 
     @Transactional
@@ -176,7 +235,8 @@ public class InviteService {
         invite.setStatus(GroupInviteStatus.DECLINED);
         invite = groupInviteRepository.save(invite);
 
-        return toInviteDTO(invite, getInvitedUserEmail(invite));
+        Group group = groupRepository.findById(invite.getGroupId()).orElse(null);
+        return toInviteDTO(invite, getInvitedUserEmail(invite), group);
     }
 
     private String getInvitedUserEmail(GroupInvite inv) {
@@ -185,10 +245,20 @@ public class InviteService {
                 .orElse(null);
     }
 
-    private InviteDTO toInviteDTO(GroupInvite inv, String invitedUserEmail) {
+    private InviteGroupDTO toInviteGroupDTO(Group g) {
+        if (g == null) return null;
+        return InviteGroupDTO.builder()
+                .id(g.getId())
+                .name(g.getName())
+                .description(g.getDescription())
+                .build();
+    }
+
+    private InviteDTO toInviteDTO(GroupInvite inv, String invitedUserEmail, Group group) {
         return InviteDTO.builder()
                 .id(inv.getId())
                 .groupId(inv.getGroupId())
+                .group(toInviteGroupDTO(group))
                 .invitedUserId(inv.getInvitedUserId())
                 .invitedUserEmail(invitedUserEmail)
                 .status(inv.getStatus())

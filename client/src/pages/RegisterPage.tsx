@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,6 +42,7 @@ const ArrowRightIcon = () => (
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -79,6 +81,13 @@ export function RegisterPage() {
       const token = data?.token ?? data?.accessToken;
       if (token) {
         authStore.setToken(token);
+        const user = data?.user;
+        if (user?.id != null) {
+          authStore.setCurrentUser({ id: String(user.id), email: user.email });
+        }
+        queryClient.invalidateQueries({ queryKey: ["invites"] });
+        queryClient.invalidateQueries({ queryKey: ["groups", "my"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
         navigate("/dashboard", { replace: true });
       } else {
         navigate("/login", { state: { message: "Account created, please sign in." }, replace: true });

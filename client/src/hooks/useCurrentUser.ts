@@ -3,11 +3,12 @@ import { getCurrentUser } from "@/api/user.api";
 import { authStore } from "@/auth/authStore";
 
 export function useCurrentUser() {
-  const isAuthenticated = authStore.isAuthenticated();
+  const token = authStore.getToken();
+  const userId = authStore.getCurrentUserId();
   return useQuery({
-    queryKey: ["currentUser"],
+    queryKey: ["currentUser", userId ?? ""],
     queryFn: getCurrentUser,
-    enabled: isAuthenticated,
+    enabled: !!token && !!userId,
     staleTime: 5 * 60 * 1000,
   });
 }

@@ -1,6 +1,7 @@
 package com.dailychallenge.controller;
 
 import com.dailychallenge.dto.group.InviteDTO;
+import com.dailychallenge.dto.group.InvitePreviewDTO;
 import com.dailychallenge.exception.UnauthorizedException;
 import com.dailychallenge.service.CurrentUserService;
 import com.dailychallenge.service.InviteService;
@@ -28,6 +29,13 @@ public class InviteApiController {
         UUID currentUserId = requireCurrentUserId();
         List<InviteDTO> invites = inviteService.listMyInvites(currentUserId);
         return ResponseEntity.ok(invites);
+    }
+
+    @GetMapping("/{id}/preview")
+    public ResponseEntity<InvitePreviewDTO> getInvitePreview(@PathVariable("id") UUID id) {
+        UUID currentUserId = requireCurrentUserId();
+        InvitePreviewDTO preview = inviteService.getInvitePreview(id, currentUserId);
+        return ResponseEntity.ok(preview);
     }
 
     @PostMapping("/{id}/approve")
