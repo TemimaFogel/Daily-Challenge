@@ -1,62 +1,131 @@
-import { Link, useLocation } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { authStore } from "@/auth/authStore";
+import {
+  SIDEBAR_NAV_ITEMS,
+  NAV_SIGN_IN,
+  NAV_SIGN_UP,
+  NAV_LOGOUT,
+} from "./navConfig";
 
 const SIDEBAR_WIDTH = "w-[260px]";
 
-const navLink =
-  "flex items-center gap-3 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-active hover:text-accent-foreground";
-const navLinkActive = "bg-sidebar-active text-accent-foreground";
+const navLinkBase =
+  "flex items-center gap-3 rounded-full px-3 py-2 text-sm font-medium transition-colors";
+const navLinkInactive =
+  "text-muted-foreground hover:bg-muted/80 hover:text-foreground";
+const navLinkActive =
+  "bg-gradient-to-r from-indigo-500/15 to-purple-500/15 text-foreground shadow-sm";
 
-const icons = {
-  dashboard: (
-    <svg className="size-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-    </svg>
-  ),
-  layout: (
-    <svg className="size-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-    </svg>
-  ),
-};
+interface SidebarProps {
+  className?: string;
+  /** When true, used inside mobile sheet (no fixed positioning) */
+  inline?: boolean;
+}
 
-const items = [
-  { to: "/", label: "Dashboard", icon: icons.dashboard },
-  { to: "/demo", label: "Design demo", icon: icons.layout },
-];
-
-export function Sidebar() {
+export function Sidebar({ className, inline }: SidebarProps) {
+  const navigate = useNavigate();
   const location = useLocation();
+  const isLoggedIn = authStore.isAuthenticated();
+
+  const isDashboardActive = location.pathname === "/" || location.pathname === "/dashboard";
+
+  const handleLogout = () => {
+    authStore.clearToken();
+    navigate("/login", { replace: true });
+  };
+
+  const content = (
+    <>
+      <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-xs font-bold">
+          DC
+        </div>
+        <span className="font-semibold text-foreground">Daily Challenge</span>
+      </div>
+      <nav className="flex-1 space-y-1 p-4">
+        {SIDEBAR_NAV_ITEMS.map(({ to, label, icon: Icon }) => {
+          const active = to === "/dashboard" ? isDashboardActive : undefined;
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end={to !== "/challenges"}
+              className={({ isActive }) =>
+                cn(
+                  navLinkBase,
+                  (active ?? isActive) ? navLinkActive : navLinkInactive
+                )
+              }
+            >
+              <Icon className="size-5 shrink-0" />
+              {label}
+            </NavLink>
+          );
+        })}
+      </nav>
+      <div className="shrink-0 p-4">
+        <Separator className="mb-4" />
+        {!isLoggedIn ? (
+          <div className="flex flex-col gap-1">
+            <NavLink
+              to={NAV_SIGN_IN.to}
+              className={({ isActive }) =>
+                cn(
+                  navLinkBase,
+                  isActive ? navLinkActive : navLinkInactive
+                )
+              }
+            >
+              <NAV_SIGN_IN.icon className="size-5 shrink-0" />
+              {NAV_SIGN_IN.label}
+            </NavLink>
+            <NavLink
+              to={NAV_SIGN_UP.to}
+              className={({ isActive }) =>
+                cn(
+                  navLinkBase,
+                  isActive ? navLinkActive : navLinkInactive
+                )
+              }
+            >
+              <NAV_SIGN_UP.icon className="size-5 shrink-0" />
+              {NAV_SIGN_UP.label}
+            </NavLink>
+          </div>
+        ) : (
+          <Button
+            variant="ghost"
+            className={cn(navLinkBase, "w-full justify-start text-muted-foreground hover:bg-muted/80 hover:text-foreground")}
+            onClick={handleLogout}
+          >
+            <NAV_LOGOUT.icon className="size-5 shrink-0" />
+            {NAV_LOGOUT.label}
+          </Button>
+        )}
+      </div>
+    </>
+  );
+
+  if (inline) {
+    return (
+      <div className={cn("flex h-full flex-col", SIDEBAR_WIDTH, className)}>
+        {content}
+      </div>
+    );
+  }
 
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen border-r border-border bg-sidebar",
-        SIDEBAR_WIDTH
+        "fixed left-0 top-0 z-40 h-screen border-r border-border bg-sidebar hidden md:flex flex-col",
+        SIDEBAR_WIDTH,
+        className
       )}
     >
-      <div className="flex h-full flex-col">
-        <div className="flex h-14 shrink-0 items-center border-b border-border px-4">
-          <Link to="/" className="font-semibold text-foreground">
-            Daily Challenge
-          </Link>
-        </div>
-        <nav className="flex-1 space-y-1 p-4">
-          {items.map(({ to, label, icon }) => (
-            <Link
-              key={to}
-              to={to}
-              className={cn(
-                navLink,
-                location.pathname === to && navLinkActive
-              )}
-            >
-              {icon}
-              {label}
-            </Link>
-          ))}
-        </nav>
-      </div>
+      {content}
     </aside>
   );
 }
