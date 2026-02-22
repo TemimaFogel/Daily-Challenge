@@ -10,6 +10,7 @@ import {
   ChallengeDetailsPage,
   CreateChallengePage,
 } from "@/features/challenges";
+import { GroupsPage, GroupDetailsPage, GroupManagePage } from "@/features/groups";
 
 function App() {
   return (
@@ -24,7 +25,9 @@ function App() {
           <Route path="/challenges" element={<ChallengesListPage />} />
           <Route path="/challenges/new" element={<CreateChallengePage />} />
           <Route path="/challenges/:id" element={<ChallengeDetailsPage />} />
-          <Route path="/groups" element={<PlaceholderPage title="Groups" />} />
+          <Route path="/groups" element={<GroupsPage />} />
+          <Route path="/groups/:id" element={<GroupDetailsPage />} />
+          <Route path="/groups/:id/manage" element={<GroupManagePage />} />
           <Route path="/invitations" element={<PlaceholderPage title="Invitations" />} />
           <Route path="/history" element={<PlaceholderPage title="History" />} />
           <Route path="/settings" element={<PlaceholderPage title="Settings" />} />

@@ -20,6 +20,9 @@ public class GroupSummaryDTO {
     @Schema(description = "Group ID", example = "550e8400-e29b-41d4-a716-446655440000")
     private UUID id;
 
+    @Schema(description = "Owner user ID (for UI to show Manage only to creator)", example = "550e8400-e29b-41d4-a716-446655440000")
+    private UUID ownerId;
+
     @Schema(description = "Group name", example = "Weekend Runners")
     private String name;
 

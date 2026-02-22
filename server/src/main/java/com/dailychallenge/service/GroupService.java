@@ -88,6 +88,7 @@ public class GroupService {
         int memberCount = (int) groupMemberRepository.countByGroupId(g.getId());
         return GroupSummaryDTO.builder()
                 .id(g.getId())
+                .ownerId(g.getOwnerId())
                 .name(g.getName())
                 .description(g.getDescription())
                 .memberCount(memberCount)

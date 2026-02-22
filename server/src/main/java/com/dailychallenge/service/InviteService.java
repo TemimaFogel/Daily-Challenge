@@ -1,7 +1,9 @@
 package com.dailychallenge.service;
 
+import com.dailychallenge.dto.group.GroupInviteViewDTO;
 import com.dailychallenge.dto.group.InviteDTO;
 import com.dailychallenge.dto.group.InviteRequestDTO;
+import com.dailychallenge.dto.group.InvitedUserViewDTO;
 import com.dailychallenge.entity.Group;
 import com.dailychallenge.entity.GroupInvite;
 import com.dailychallenge.entity.GroupInviteStatus;
@@ -76,6 +78,61 @@ public class InviteService {
         return invites.stream()
                 .map(inv -> toInviteDTO(inv, getInvitedUserEmail(inv)))
                 .collect(Collectors.toList());
+    }
+
+    /** List all invites for a group. Creator-only. */
+    public List<InviteDTO> listInvitesByGroup(UUID groupId, UUID currentUserId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new NotFoundException("Group not found"));
+        if (group.getDeletedAt() != null) {
+            throw new NotFoundException("Group not found");
+        }
+        if (!group.getOwnerId().equals(currentUserId)) {
+            throw new ForbiddenException("Only the group owner can list invites");
+        }
+        List<GroupInvite> invites = groupInviteRepository.findByGroupId(groupId);
+        return invites.stream()
+                .map(inv -> toInviteDTO(inv, getInvitedUserEmail(inv)))
+                .collect(Collectors.toList());
+    }
+
+    /** List all invites for a group as view DTOs (creator-only). Includes group name and invited user info. */
+    public List<GroupInviteViewDTO> listInviteViewsByGroup(UUID groupId, UUID currentUserId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new NotFoundException("Group not found"));
+        if (group.getDeletedAt() != null) {
+            throw new NotFoundException("Group not found");
+        }
+        if (!group.getOwnerId().equals(currentUserId)) {
+            throw new ForbiddenException("Only the group owner can list invites");
+        }
+        List<GroupInvite> invites = groupInviteRepository.findByGroupIdWithGroupAndInvitedUser(groupId);
+        String groupName = group.getName();
+        return invites.stream()
+                .map(inv -> toInviteViewDTO(inv, groupName))
+                .collect(Collectors.toList());
+    }
+
+    private GroupInviteViewDTO toInviteViewDTO(GroupInvite inv, String groupName) {
+        User user = inv.getInvitedUser();
+        String email = user != null ? user.getEmail() : getInvitedUserEmail(inv);
+        if (email == null) {
+            email = "";
+        }
+        InvitedUserViewDTO invited = InvitedUserViewDTO.builder()
+                .id(user != null ? user.getId() : inv.getInvitedUserId())
+                .name(user != null ? user.getName() : null)
+                .email(email)
+                .profileImageUrl(user != null ? user.getProfileImageUrl() : null)
+                .build();
+        return GroupInviteViewDTO.builder()
+                .id(inv.getId())
+                .groupId(inv.getGroupId())
+                .groupName(groupName)
+                .status(inv.getStatus())
+                .invited(invited)
+                .createdAt(null)
+                .build();
     }
 
     @Transactional

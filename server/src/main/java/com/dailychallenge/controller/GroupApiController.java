@@ -2,6 +2,7 @@ package com.dailychallenge.controller;
 
 import com.dailychallenge.dto.group.CreateGroupRequestDTO;
 import com.dailychallenge.dto.group.GroupDTO;
+import com.dailychallenge.dto.group.GroupInviteViewDTO;
 import com.dailychallenge.dto.group.GroupMemberDTO;
 import com.dailychallenge.dto.group.GroupSummaryDTO;
 import com.dailychallenge.dto.group.InviteRequestDTO;
@@ -56,6 +57,13 @@ public class GroupApiController {
         UUID currentUserId = requireCurrentUserId();
         List<GroupMemberDTO> members = groupService.listMembers(id, currentUserId);
         return ResponseEntity.ok(members);
+    }
+
+    @GetMapping("/{id}/invites")
+    public ResponseEntity<List<GroupInviteViewDTO>> listInvites(@PathVariable("id") UUID groupId) {
+        UUID currentUserId = requireCurrentUserId();
+        List<GroupInviteViewDTO> invites = inviteService.listInviteViewsByGroup(groupId, currentUserId);
+        return ResponseEntity.ok(invites);
     }
 
     @PostMapping("/{id}/invites")

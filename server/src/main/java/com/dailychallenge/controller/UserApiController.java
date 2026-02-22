@@ -2,12 +2,14 @@ package com.dailychallenge.controller;
 
 import com.dailychallenge.dto.user.ProfileImageResponseDTO;
 import com.dailychallenge.dto.user.UserDTO;
+import com.dailychallenge.dto.user.UserSearchResultDTO;
 import com.dailychallenge.exception.NotFoundException;
 import com.dailychallenge.exception.UnauthorizedException;
 import com.dailychallenge.mapper.UserMapper;
 import com.dailychallenge.repository.UserRepository;
 import com.dailychallenge.service.CurrentUserService;
 import com.dailychallenge.service.ProfileImageService;
+import com.dailychallenge.service.UserService;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,11 +23,13 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -37,6 +41,19 @@ public class UserApiController {
     private final ProfileImageService profileImageService;
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final UserService userService;
+
+    @GetMapping("/search")
+    @Operation(summary = "Search users", description = "Search users by email or name (case insensitive). Excludes the current user. Returns id, name, email, profileImageUrl.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "List of matching users"),
+            @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
+    public ResponseEntity<List<UserSearchResultDTO>> searchUsers(@RequestParam(value = "query", required = false) String query) {
+        UUID currentUserId = requireCurrentUserId();
+        List<UserSearchResultDTO> results = userService.searchUsers(query, currentUserId);
+        return ResponseEntity.ok(results);
+    }
 
     @GetMapping("/me")
     @Operation(summary = "Get current user", description = "Returns the authenticated user's profile including profileImageUrl.")

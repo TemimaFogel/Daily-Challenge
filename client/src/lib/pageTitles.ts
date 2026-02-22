@@ -21,5 +21,7 @@ export function getPageTitle(pathname: string): string {
   if (normalized.startsWith("/challenges/") && normalized !== "/challenges/new") {
     return "Challenge";
   }
+  if (normalized.match(/^\/groups\/[^/]+\/manage$/)) return "Manage Group";
+  if (normalized.startsWith("/groups/")) return "Group";
   return "Daily Challenge";
 }

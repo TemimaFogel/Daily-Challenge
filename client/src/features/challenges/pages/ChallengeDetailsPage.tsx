@@ -1,4 +1,5 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,14 +14,6 @@ import { ChallengeStatsCard } from "../components/ChallengeStatsCard";
 import { AvatarStack } from "../components/AvatarStack";
 import { formatDateSafe } from "../api/mappers";
 
-function BackArrowIcon() {
-  return (
-    <svg className="size-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-    </svg>
-  );
-}
-
 function BellIcon() {
   return (
     <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -31,7 +24,16 @@ function BellIcon() {
 
 export function ChallengeDetailsPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { data: challenge, isLoading: loadingChallenge, error } = useChallenge(id);
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/challenges");
+    }
+  };
   const { data: stats, isLoading: loadingStats } = useChallengeStats(id);
   const join = useJoinChallenge();
   const complete = useCompleteChallenge();
@@ -114,13 +116,15 @@ export function ChallengeDetailsPage() {
   return (
     <AppLayout title={challenge.title} headerActions={headerActions}>
       <div className="mb-6">
-        <Link
-          to="/challenges"
-          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+        <button
+          type="button"
+          onClick={handleBack}
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Back to Challenges"
         >
-          <BackArrowIcon />
+          <ArrowLeft className="size-4 shrink-0" />
           Back to Challenges
-        </Link>
+        </button>
       </div>
 
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
