@@ -96,6 +96,7 @@ function MemberRow({
 
 export function GroupDetailsPage() {
   const { id } = useParams<{ id: string }>();
+
   const { data: myGroups = [] } = useMyGroups();
   const groupFromCache = id ? myGroups.find((g) => g.id === id) : undefined;
   const { data: members = [], isLoading: loadingMembers, isError: errorMembers } = useGroupMembers(id, Boolean(id));
@@ -123,7 +124,7 @@ export function GroupDetailsPage() {
   const showContent = !hasMembersError;
 
   return (
-    <AppLayout>
+    <AppLayout title={groupName}>
       <div className="mb-4">
         <Link
           to="/groups"

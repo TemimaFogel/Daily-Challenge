@@ -181,6 +181,13 @@ public class ChallengeService {
         assertUserCanJoin(authUserId, challenge);
     }
 
+    /** Returns the challenge's date (for which day the challenge is). Throws 404 if not found. */
+    public LocalDate getChallengeDate(UUID challengeId) {
+        return challengeRepository.findById(challengeId)
+                .orElseThrow(() -> new NotFoundException("Challenge not found"))
+                .getChallengeDate();
+    }
+
     /**
      * Enforces visibility: PERSONAL = only creator; GROUP = only group members; PUBLIC = any authenticated user.
      */

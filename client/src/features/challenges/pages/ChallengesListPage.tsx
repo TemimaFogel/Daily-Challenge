@@ -7,6 +7,8 @@ import { useChallengesList, useJoinChallenge, usePersonalDashboard } from "../ho
 import { ChallengeCard } from "../components/ChallengeCard";
 import { ChallengeFilters } from "../components/ChallengeFilters";
 import { CreateChallengeDialog } from "../components/CreateChallengeDialog";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { getTodayLocal, isChallengeToday } from "../lib/dateUtils";
 import type { Challenge, ChallengeListParams } from "../types";
 
 function SearchIcon() {
@@ -34,7 +36,10 @@ export function ChallengesListPage() {
 
   const { data: challenges = [], isLoading, error } = useChallengesList(params);
   const { data: dashboard } = usePersonalDashboard();
+  const { data: currentUser } = useCurrentUser();
   const join = useJoinChallenge();
+
+  const todayLocal = getTodayLocal(currentUser?.timezone ?? undefined);
 
   const dashboardChallengeIds = useMemo(
     () =>
@@ -78,6 +83,8 @@ export function ChallengesListPage() {
   );
 
   const handleJoin = (id: string) => {
+    const c = filtered.find((x) => x.id === id);
+    if (c && !isChallengeToday(c.challengeDate, todayLocal)) return;
     setJoiningId(id);
     join.mutate(id, {
       onSettled: () => {
@@ -106,19 +113,6 @@ export function ChallengesListPage() {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="h-9 w-40 rounded-md border border-input bg-background pl-8 pr-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
-      </div>
-      <button
-        type="button"
-        className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        aria-label="Notifications"
-      >
-        <BellIcon />
-      </button>
-      <div
-        className="flex size-9 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground"
-        aria-hidden
-      >
-        U
       </div>
     </div>
   );
@@ -180,6 +174,7 @@ export function ChallengesListPage() {
                     key={c.id}
                     challenge={c}
                     isJoined={true}
+                    isReadOnly={!isChallengeToday(c.challengeDate, todayLocal)}
                     onJoin={handleJoin}
                     joinLoading={join.isPending && joiningId === c.id}
                     joinError={
@@ -205,6 +200,7 @@ export function ChallengesListPage() {
                     key={c.id}
                     challenge={c}
                     isJoined={false}
+                    isReadOnly={!isChallengeToday(c.challengeDate, todayLocal)}
                     onJoin={handleJoin}
                     joinLoading={join.isPending && joiningId === c.id}
                     joinError={

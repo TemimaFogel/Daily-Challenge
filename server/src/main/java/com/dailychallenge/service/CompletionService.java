@@ -34,13 +34,16 @@ public class CompletionService {
     public void completeForToday(UUID authUserId, UUID challengeId) {
         challengeService.assertUserCanJoin(authUserId, challengeId);
 
-        if (!participationService.isParticipant(authUserId, challengeId)) {
-            throw new ForbiddenException("Must join the challenge before completing");
-        }
-
         LocalDate today = userRepository.findById(authUserId)
                 .map(u -> TimeUtil.todayInZone(u.getTimezone()))
                 .orElse(LocalDate.now());
+        if (!challengeService.getChallengeDate(challengeId).equals(today)) {
+            throw new ConflictException("Challenge is not active today");
+        }
+
+        if (!participationService.isParticipant(authUserId, challengeId)) {
+            throw new ForbiddenException("Must join the challenge before completing");
+        }
 
         if (completionRepository.existsByChallengeIdAndUserIdAndCompletionDate(challengeId, authUserId, today)) {
             throw new ConflictException("Already completed for today");

@@ -58,7 +58,11 @@ export function Topbar({ title, actions, onMenuClick, className }: TopbarProps) 
         </h1>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        {actions}
+        {actions != null && (
+          <div className="flex items-center gap-2 shrink-0">
+            {actions}
+          </div>
+        )}
         <Button variant="ghost" size="icon" aria-label="Notifications">
           <Bell className="size-5" />
         </Button>

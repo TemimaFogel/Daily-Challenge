@@ -10,6 +10,8 @@ import type { ParticipantPreviewUser } from "./ChallengeParticipantsPreview";
 interface ChallengeCardProps {
   challenge: Challenge;
   isJoined?: boolean;
+  /** When true, challenge is not for today; no Join action, show Archived/View only. */
+  isReadOnly?: boolean;
   participantCount?: number | null;
   participantsPreview?: ParticipantPreviewUser[];
   onJoin: (id: string) => void;
@@ -27,6 +29,7 @@ const visibilityLabels: Record<string, string> = {
 export function ChallengeCard({
   challenge,
   isJoined,
+  isReadOnly,
   participantCount,
   participantsPreview,
   onJoin,
@@ -50,6 +53,11 @@ export function ChallengeCard({
             <CardTitle className="text-lg font-bold leading-tight line-clamp-2 flex-1 min-w-0">
               {challenge.title}
             </CardTitle>
+            {isReadOnly && (
+              <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                Archived
+              </span>
+            )}
             <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
               {visibilityLabels[challenge.visibility] ?? challenge.visibility}
             </span>
@@ -73,10 +81,18 @@ export function ChallengeCard({
           ) : null}
         </CardContent>
         <CardFooter className="flex flex-col gap-1.5 pt-0">
-          {joinError === "already_joined" && !joined && (
+          {joinError === "already_joined" && !joined && !isReadOnly && (
             <p className="text-xs text-muted-foreground">Already joined</p>
           )}
-          {joined ? (
+          {isReadOnly ? (
+            <Button
+              variant="outline"
+              className="w-full cursor-default"
+              disabled
+            >
+              {joined ? "JOINED" : "View"}
+            </Button>
+          ) : joined ? (
             <Button
               className="w-full bg-emerald-600 text-white hover:bg-emerald-600 border-0 shadow-sm cursor-default"
               disabled

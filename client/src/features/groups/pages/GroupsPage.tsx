@@ -1,17 +1,37 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { CardSkeleton } from "@/components/ui/LoadingSkeleton";
 import { useMyGroups } from "../hooks/useMyGroups";
 import { GroupCard } from "../components/GroupCard";
 import { CreateGroupCard } from "../components/CreateGroupCard";
 import { CreateGroupDialog } from "../components/CreateGroupDialog";
 
+function SearchIcon() {
+  return (
+    <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  );
+}
+
 export function GroupsPage() {
+  const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const { data: groups = [], isLoading, isError, refetch } = useMyGroups();
+
+  const filteredGroups = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return groups;
+    return groups.filter(
+      (g) =>
+        (g.name ?? "").toLowerCase().includes(q) ||
+        (g.description ?? "").toLowerCase().includes(q)
+    );
+  }, [groups, searchQuery]);
 
   useEffect(() => {
     if (!toast) return;
@@ -23,8 +43,25 @@ export function GroupsPage() {
     setToast(message ?? "Group created");
   };
 
+  const headerActions = (
+    <div className="flex items-center gap-2">
+      <div className="relative">
+        <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+          <SearchIcon />
+        </span>
+        <input
+          type="search"
+          placeholder="Search..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="h-9 w-40 rounded-md border border-input bg-background pl-8 pr-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+      </div>
+    </div>
+  );
+
   return (
-    <AppLayout>
+    <AppLayout title="Groups" headerActions={headerActions}>
       <PageHeader title="My Groups" hideTitle />
       {toast && (
         <div
@@ -54,10 +91,23 @@ export function GroupsPage() {
               You don&apos;t have any groups yet. Create one to get started.
             </div>
           )}
-          <CreateGroupCard onCreateClick={() => setDialogOpen(true)} />
-          {groups.map((g) => (
-            <GroupCard key={g.id} group={g} />
-          ))}
+          {groups.length > 0 &&
+            searchQuery.trim() !== "" &&
+            filteredGroups.length === 0 ? (
+            <div className="col-span-full">
+              <EmptyState
+                title="No groups found"
+                description="Try a different search term."
+              />
+            </div>
+          ) : (
+            <>
+              <CreateGroupCard onCreateClick={() => setDialogOpen(true)} />
+              {filteredGroups.map((g) => (
+                <GroupCard key={g.id} group={g} />
+              ))}
+            </>
+          )}
         </div>
       )}
       <CreateGroupDialog

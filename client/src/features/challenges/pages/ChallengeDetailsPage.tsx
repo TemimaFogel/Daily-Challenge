@@ -16,6 +16,8 @@ import { ChallengeStatsCard } from "../components/ChallengeStatsCard";
 import { AvatarStack } from "../components/AvatarStack";
 import { formatDateSafe } from "../api/mappers";
 import { resolveApiUrl } from "@/lib/urls";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { getTodayLocal, toDateOnly } from "../lib/dateUtils";
 
 function BellIcon() {
   return (
@@ -49,8 +51,15 @@ export function ChallengeDetailsPage() {
   const { data: stats, isLoading: loadingStats } = useChallengeStats(id);
   const { data: completionsToday = [], isLoading: loadingCompletions } = useChallengeCompletions(id);
   const { data: dashboard } = usePersonalDashboard();
+  const { data: currentUser } = useCurrentUser();
   const join = useJoinChallenge();
   const complete = useCompleteChallenge();
+
+  const todayLocal = getTodayLocal(currentUser?.timezone ?? undefined);
+  const challengeDateLocal = challenge ? toDateOnly(challenge.challengeDate) : "";
+  const isTodayChallenge =
+    challengeDateLocal !== "" && challengeDateLocal === todayLocal;
+  const isReadOnly = !isTodayChallenge;
 
   const isJoined =
     challenge?.isJoined === true ||
@@ -83,23 +92,23 @@ export function ChallengeDetailsPage() {
     (complete.error as { response?: { status?: number } }).response?.status === 409;
   const completeIsAlreadyDone = completedToday || completeError409;
 
-  const headerActions = (
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        aria-label="Notifications"
-      >
-        <BellIcon />
-      </button>
-      <div
-        className="flex size-9 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground"
-        aria-hidden
-      >
-        U
-      </div>
-    </div>
-  );
+  // const headerActions = (
+  //   <div className="flex items-center gap-2">
+  //     <button
+  //       type="button"
+  //       className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+  //       aria-label="Notifications"
+  //     >
+  //       <BellIcon />
+  //     </button>
+  //     <div
+  //       className="flex size-9 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground"
+  //       aria-hidden
+  //     >
+  //       U
+  //     </div>
+  //   </div>
+  // );
 
   if (error || (challenge == null && !loadingChallenge)) {
     return (
@@ -132,7 +141,7 @@ export function ChallengeDetailsPage() {
       : [];
 
   return (
-    <AppLayout title={challenge.title} headerActions={headerActions}>
+    <AppLayout title={challenge.title}>
       <div className="mb-6">
         <button
           type="button"
@@ -149,7 +158,14 @@ export function ChallengeDetailsPage() {
         <div className="flex-1 min-w-0">
           <Card className="rounded-2xl border border-border shadow-sm overflow-hidden">
             <CardHeader>
-              <CardTitle className="text-xl font-bold">{challenge.title}</CardTitle>
+              <div className="flex items-center gap-2 flex-wrap">
+                <CardTitle className="text-xl font-bold">{challenge.title}</CardTitle>
+                {isReadOnly && (
+                  <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    Archived
+                  </span>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">
@@ -158,7 +174,9 @@ export function ChallengeDetailsPage() {
 
               {hasDate && (
                 <p className="text-sm text-muted-foreground">
-                  Today, {formatDateSafe(challenge.challengeDate)} · Ends today
+                  {isTodayChallenge
+                    ? `Today, ${formatDateSafe(challenge.challengeDate)} · Ends today`
+                    : formatDateSafe(challenge.challengeDate)}
                 </p>
               )}
 
@@ -169,7 +187,7 @@ export function ChallengeDetailsPage() {
                   challenge.
                 </p>
               )}
-
+              {isTodayChallenge && (
               <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-sm font-semibold text-foreground">Completed Today</h3>
@@ -200,44 +218,67 @@ export function ChallengeDetailsPage() {
                       ))}
                     </ul>
                   </div>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-2 pt-2">
-                {!isJoined && (
-                  <Button
-                    className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 border-0"
-                    onClick={() => join.mutate(challenge.id)}
-                    disabled={join.isPending}
-                  >
-                    {join.isPending ? "Joining…" : "Join"}
-                  </Button>
-                )}
-                {completeIsAlreadyDone ? (
-                  <Button
-                    className="bg-emerald-600 text-white hover:bg-emerald-600 border-0 cursor-default"
-                    disabled
-                  >
-                    Completed Today
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    onClick={() => complete.mutate(challenge.id)}
-                    disabled={complete.isPending}
-                  >
-                    {complete.isPending ? "…" : "Complete for Today"}
-                  </Button>
-                )}
-              </div>
-
-              {joinError409 && !isJoined && (
-                <p className="text-sm text-muted-foreground">Already joined.</p>
+                  )}
+                </div>
               )}
-              {completeError403 && (
-                <p className="text-sm text-amber-600 dark:text-amber-500">
-                  Join required before completing.
-                </p>
+
+              {isReadOnly ? (
+                <div className="rounded-lg border border-border bg-muted/50 px-3 py-2.5">
+                  <p className="text-sm text-muted-foreground">
+                    This is a past challenge. Actions are disabled.
+                  </p>
+                  {(isJoined || completeIsAlreadyDone) && (
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      {isJoined && "You joined this challenge."}
+                      {isJoined && completeIsAlreadyDone && " "}
+                      {completeIsAlreadyDone && "You completed it."}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {!isJoined && (
+                      <Button
+                        className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 border-0"
+                        onClick={() => {
+                          if (isReadOnly) return;
+                          join.mutate(challenge.id);
+                        }}
+                        disabled={join.isPending}
+                      >
+                        {join.isPending ? "Joining…" : "Join"}
+                      </Button>
+                    )}
+                    {completeIsAlreadyDone ? (
+                      <Button
+                        className="bg-emerald-600 text-white hover:bg-emerald-600 border-0 cursor-default"
+                        disabled
+                      >
+                        Completed Today
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          if (isReadOnly) return;
+                          complete.mutate(challenge.id);
+                        }}
+                        disabled={complete.isPending}
+                      >
+                        {complete.isPending ? "…" : "Complete for Today"}
+                      </Button>
+                    )}
+                  </div>
+                  {joinError409 && !isJoined && (
+                    <p className="text-sm text-muted-foreground">Already joined.</p>
+                  )}
+                  {completeError403 && (
+                    <p className="text-sm text-amber-600 dark:text-amber-500">
+                      Join required before completing.
+                    </p>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

@@ -11,7 +11,7 @@ interface AppLayoutProps {
   children: React.ReactNode;
   /** Override page title in Topbar (default: from route via pageTitles) */
   title?: string;
-  /** Optional actions in Topbar right side (before bell/avatar) */
+  /** Optional actions in Topbar right side (before bell/avatar). Rendered whenever provided, independent of title. */
   headerActions?: React.ReactNode;
 }
 
