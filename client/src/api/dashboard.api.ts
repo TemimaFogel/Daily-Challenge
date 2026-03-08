@@ -7,6 +7,11 @@ export interface PersonalDashboardItemDTO {
 }
 
 export interface PersonalDashboardDTO {
+  totalChallengesSignedFor?: number;
+  totalCompletions?: number;
+  activeDailyChallenges?: number;
+  streak?: number;
+  last30DaysCompletions?: Record<string, number>;
   challenges?: PersonalDashboardItemDTO[];
 }
 

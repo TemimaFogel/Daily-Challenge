@@ -24,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -70,6 +71,7 @@ public class InviteService {
                 .invitedUserId(invitedUserId)
                 .invitedByUserId(currentUserId)
                 .status(GroupInviteStatus.PENDING)
+                .createdAt(Instant.now())
                 .build();
         invite = groupInviteRepository.save(invite);
 
@@ -121,20 +123,10 @@ public class InviteService {
     }
 
     public List<InviteDTO> listMyInvites(UUID currentUserId) {
-        List<GroupInvite> invites = groupInviteRepository.findByInvitedUserIdAndStatus(
+        List<GroupInvite> invites = groupInviteRepository.findByInvitedUserIdAndStatusWithInvitedBy(
                 currentUserId, GroupInviteStatus.PENDING);
-        if (invites.isEmpty()) {
-            return List.of();
-        }
-        List<UUID> groupIds = invites.stream()
-                .map(GroupInvite::getGroupId)
-                .distinct()
-                .toList();
-        List<Group> groups = groupRepository.findByIdInAndDeletedAtIsNull(groupIds);
-        java.util.Map<UUID, Group> groupMap = groups.stream()
-                .collect(Collectors.toMap(Group::getId, g -> g));
         return invites.stream()
-                .map(inv -> toInviteDTO(inv, getInvitedUserEmail(inv), groupMap.get(inv.getGroupId())))
+                .map(inv -> toInviteDTOWithInviter(inv, getInvitedUserEmail(inv)))
                 .collect(Collectors.toList());
     }
 
@@ -261,6 +253,25 @@ public class InviteService {
                 .group(toInviteGroupDTO(group))
                 .invitedUserId(inv.getInvitedUserId())
                 .invitedUserEmail(invitedUserEmail)
+                .status(inv.getStatus())
+                .createdAt(inv.getCreatedAt())
+                .build();
+    }
+
+    private InviteDTO toInviteDTOWithInviter(GroupInvite inv, String invitedUserEmail) {
+        Group group = inv.getGroup();
+        User inviter = inv.getInvitedByUser();
+        String inviterName = inviter != null ? inviter.getName() : null;
+        String inviterEmail = inviter != null ? inviter.getEmail() : null;
+        return InviteDTO.builder()
+                .id(inv.getId())
+                .groupId(inv.getGroupId())
+                .group(toInviteGroupDTO(group))
+                .invitedUserId(inv.getInvitedUserId())
+                .invitedUserEmail(invitedUserEmail)
+                .invitedByName(inviterName)
+                .invitedByEmail(inviterEmail)
+                .createdAt(inv.getCreatedAt())
                 .status(inv.getStatus())
                 .build();
     }

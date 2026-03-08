@@ -61,8 +61,8 @@ export function GroupsPage() {
   );
 
   return (
-    <AppLayout title="Groups" headerActions={headerActions}>
-      <PageHeader title="My Groups" hideTitle />
+    <AppLayout>
+      <PageHeader title="My Groups" hideTitle actions={headerActions} />
       {toast && (
         <div
           role="status"

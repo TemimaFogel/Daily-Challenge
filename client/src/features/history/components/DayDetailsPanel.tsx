@@ -4,11 +4,15 @@ import { Calendar, CheckCircle, ChevronRight, UserPlus, XCircle } from "lucide-r
 import { cn } from "@/lib/utils";
 import type { DayEntry } from "../lib/historyMapper";
 
+export type DayDetailsFilterType = "all" | "joined" | "completed";
+
 export interface DayDetailsPanelProps {
   selectedDate: string | null;
   entries: DayEntry[];
   joinedCount: number;
   completedCount: number;
+  /** When set, header counts reflect filter (e.g. "joined" shows only joined count). */
+  filter?: DayDetailsFilterType;
   onClose?: () => void;
   className?: string;
   /** When true, render as inline panel (desktop). When false, content only for use inside Sheet. */
@@ -26,10 +30,15 @@ export function DayDetailsPanel({
   entries,
   joinedCount,
   completedCount,
+  filter = "all",
   onClose,
   className,
   variant = "panel",
 }: DayDetailsPanelProps) {
+  const showJoinedCount = filter === "all" || filter === "joined";
+  const showCompletedCount = filter === "all" || filter === "completed";
+  const displayJoined = showJoinedCount ? joinedCount : 0;
+  const displayCompleted = showCompletedCount ? completedCount : 0;
   const navigate = useNavigate();
 
   if (!selectedDate) {
@@ -71,14 +80,18 @@ export function DayDetailsPanel({
         )}
       </div>
       <div className="flex gap-3 mb-4 text-sm">
-        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-          <UserPlus className="size-4" />
-          <strong className="text-foreground">{joinedCount}</strong> Joined
-        </span>
-        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-          <CheckCircle className="size-4" />
-          <strong className="text-foreground">{completedCount}</strong> Completed
-        </span>
+        {showJoinedCount && (
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+            <UserPlus className="size-4" />
+            <strong className="text-foreground">{displayJoined}</strong> Joined
+          </span>
+        )}
+        {showCompletedCount && (
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+            <CheckCircle className="size-4" />
+            <strong className="text-foreground">{displayCompleted}</strong> Completed
+          </span>
+        )}
       </div>
       {entries.length === 0 ? (
         <p className="text-sm text-muted-foreground py-6 text-center">No activity this day</p>

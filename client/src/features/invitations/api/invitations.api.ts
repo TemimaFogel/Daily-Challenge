@@ -16,6 +16,9 @@ export interface Invite {
   group?: InviteGroup | null;
   invitedUserId?: string;
   invitedUserEmail?: string | null;
+  invitedByName?: string | null;
+  invitedByEmail?: string | null;
+  createdAt?: string | null;
   status: InviteStatus;
 }
 

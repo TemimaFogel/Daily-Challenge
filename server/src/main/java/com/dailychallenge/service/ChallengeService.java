@@ -3,13 +3,16 @@ package com.dailychallenge.service;
 import com.dailychallenge.dto.challenge.ChallengeDTO;
 import com.dailychallenge.dto.challenge.ChallengeQueryDTO;
 import com.dailychallenge.dto.challenge.CreateChallengeRequestDTO;
+import com.dailychallenge.dto.group.GroupChallengeItemDTO;
 import com.dailychallenge.entity.Challenge;
 import com.dailychallenge.entity.Visibility;
 import com.dailychallenge.exception.ForbiddenException;
 import com.dailychallenge.exception.NotFoundException;
 import com.dailychallenge.config.DailyZone;
 import com.dailychallenge.repository.ChallengeRepository;
+import com.dailychallenge.repository.CompletionRepository;
 import com.dailychallenge.repository.GroupMemberRepository;
+import com.dailychallenge.repository.ParticipantRepository;
 import com.dailychallenge.repository.GroupRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,6 +34,8 @@ public class ChallengeService {
     private final GroupService groupService;
     private final GroupMemberRepository groupMemberRepository;
     private final GroupRepository groupRepository;
+    private final ParticipantRepository participantRepository;
+    private final CompletionRepository completionRepository;
     private final DailyZone dailyZone;
 
     @Transactional
@@ -161,6 +166,27 @@ public class ChallengeService {
             throw new ForbiddenException("Only the creator can delete this challenge");
         }
         challengeRepository.delete(challenge);
+    }
+
+    /**
+     * Returns all challenges for a group, sorted by challenge date descending (newest first).
+     * Requires group membership. Each item includes joined and completed for the current user.
+     */
+    public List<GroupChallengeItemDTO> listGroupChallenges(UUID authUserId, UUID groupId) {
+        groupService.requireGroupNotDeleted(groupId);
+        if (!groupService.isMember(groupId, authUserId)) {
+            throw new ForbiddenException("Not a member of this group");
+        }
+        List<Challenge> challenges = challengeRepository.findByGroupId(groupId);
+        return challenges.stream()
+                .sorted((a, b) -> b.getChallengeDate().compareTo(a.getChallengeDate()))
+                .map(c -> GroupChallengeItemDTO.builder()
+                        .challenge(toChallengeDTO(c))
+                        .joined(participantRepository.existsByChallengeIdAndUserId(c.getId(), authUserId))
+                        .completed(completionRepository.existsByChallengeIdAndUserIdAndCompletionDate(
+                                c.getId(), authUserId, c.getChallengeDate()))
+                        .build())
+                .collect(Collectors.toList());
     }
 
     /**

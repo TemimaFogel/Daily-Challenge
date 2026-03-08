@@ -1,4 +1,5 @@
 import { http } from "@/api/http";
+import type { ChallengeDTO } from "@/features/challenges/types";
 
 export interface GroupSummary {
   id: string;
@@ -40,6 +41,13 @@ export interface GroupInviteViewInvited {
   profileImageUrl?: string | null;
 }
 
+/** Group challenge item from GET /api/groups/{id}/challenges */
+export interface GroupChallengeItem {
+  challenge: ChallengeDTO;
+  joined: boolean;
+  completed: boolean;
+}
+
 /** Invite view from GET /api/groups/{id}/invites */
 export interface GroupInviteView {
   id: string;
@@ -77,5 +85,11 @@ export const groupsApi = {
 
   removeMember(groupId: string, userId: string): Promise<void> {
     return http.delete(`/api/groups/${groupId}/members/${userId}`).then(() => undefined);
+  },
+
+  getChallenges(groupId: string): Promise<GroupChallengeItem[]> {
+    return http
+      .get<GroupChallengeItem[]>(`/api/groups/${groupId}/challenges`)
+      .then((r) => (Array.isArray(r.data) ? r.data : []));
   },
 };

@@ -118,7 +118,7 @@ export function ChallengesListPage() {
   );
 
   return (
-    <AppLayout title="Challenges" headerActions={headerActions}>
+    <AppLayout>
       {toast && (
         <div
           role="status"
@@ -132,7 +132,7 @@ export function ChallengesListPage() {
         onOpenChange={setCreateDialogOpen}
         onSuccess={(message) => setToast(message)}
       />
-      <PageHeader title="Challenges" hideTitle />
+      <PageHeader title="Challenges" hideTitle actions={headerActions} />
 
       <ChallengeFilters
         visibility={params.visibility}

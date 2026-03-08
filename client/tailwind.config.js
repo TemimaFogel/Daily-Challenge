@@ -7,6 +7,9 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["Inter", "system-ui", "sans-serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -49,9 +52,21 @@ export default {
         subtle: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
         card: "0 1px 3px 0 rgb(0 0 0 / 0.06)",
         "card-soft": "0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04)",
+        "soft": "0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04)",
+        "soft-lg": "0 10px 15px -3px rgb(0 0 0 / 0.06), 0 4px 6px -4px rgb(0 0 0 / 0.04)",
+      },
+      animation: {
+        "fade-in": "fadeIn 0.3s ease-out",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
       },
       backgroundImage: {
         "primary-gradient": "linear-gradient(135deg, hsl(var(--primary-from)) 0%, hsl(var(--primary-to)) 100%)",
+        "hero-gradient": "linear-gradient(135deg, hsl(263 60% 95%) 0%, hsl(330 50% 95%) 50%, hsl(174 40% 94%) 100%)",
       },
     },
   },

@@ -1,5 +1,7 @@
 import {
   addDays,
+  addMonths,
+  subMonths,
   endOfMonth,
   format,
   startOfMonth,
@@ -13,12 +15,15 @@ import type { HistoryMonthData } from "../lib/historyMapper";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+export type HistoryFilterType = "all" | "joined" | "completed";
+
 export interface HistoryCalendarProps {
   monthDate: Date;
   onMonthChange: (date: Date) => void;
   selectedDate: string | null;
   onSelectDate: (dateStr: string | null) => void;
   data: HistoryMonthData | undefined;
+  filter?: HistoryFilterType;
   className?: string;
 }
 
@@ -28,6 +33,7 @@ export function HistoryCalendar({
   selectedDate,
   onSelectDate,
   data,
+  filter = "all",
   className,
 }: HistoryCalendarProps) {
   const monthStart = startOfMonth(monthDate);
@@ -40,10 +46,10 @@ export function HistoryCalendar({
   }
 
   const handlePrev = () => {
-    onMonthChange(addDays(monthDate, -1));
+    onMonthChange(startOfMonth(subMonths(monthDate, 1)));
   };
   const handleNext = () => {
-    onMonthChange(addDays(monthDate, 1));
+    onMonthChange(startOfMonth(addMonths(monthDate, 1)));
   };
 
   return (
@@ -84,6 +90,8 @@ export function HistoryCalendar({
           const summary = data?.summaryByDate[dateStr];
           const joined = summary?.joinedCount ?? 0;
           const completed = summary?.completedCount ?? 0;
+          const showJoined = (filter === "all" || filter === "joined") && joined > 0;
+          const showCompleted = (filter === "all" || filter === "completed") && completed > 0;
           const isCurrentMonth = day.getMonth() === monthDate.getMonth();
           const isSelected = selectedDate === dateStr;
           const isTodayDate = isToday(day);
@@ -104,7 +112,7 @@ export function HistoryCalendar({
             >
               <span className="font-medium">{format(day, "d")}</span>
               <div className="flex items-center gap-0.5 mt-0.5 flex-wrap justify-center max-w-full">
-                {joined > 0 && (
+                {showJoined && (
                   <span
                     className={cn(
                       "inline-flex items-center rounded px-1 text-[10px] font-medium",
@@ -115,7 +123,7 @@ export function HistoryCalendar({
                     {joined}
                   </span>
                 )}
-                {completed > 0 && (
+                {showCompleted && (
                   <span
                     className={cn(
                       "inline-flex items-center rounded px-1 text-[10px] font-medium bg-emerald-500/20 text-emerald-700 dark:text-emerald-400",

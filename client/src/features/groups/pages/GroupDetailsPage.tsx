@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Users, Trophy, Calendar } from "lucide-react";
+import { ArrowLeft, Users, Trophy, Calendar, CheckCircle, UserPlus, ChevronRight } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
@@ -14,9 +14,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingSkeleton, RowSkeleton } from "@/components/ui/LoadingSkeleton";
 import { useMyGroups } from "../hooks/useMyGroups";
 import { useGroupMembers } from "../hooks/useGroupMembers";
-import { useGroupDashboard } from "../hooks/useGroupDashboard";
-import { mapChallengeFromApi } from "@/features/challenges/api/mappers";
-import type { GroupMember } from "../api/groups.api";
+import { useGroupChallenges } from "../hooks/useGroupChallenges";
+import { mapChallengeFromApi, oneLineSummary } from "@/features/challenges/api/mappers";
+import type { GroupMember, GroupChallengeItem } from "../api/groups.api";
+import { cn } from "@/lib/utils";
 
 function getInitials(name: string | null, email: string | null): string {
   if (name?.trim()) {
@@ -40,6 +41,81 @@ function formatDate(iso: string | null | undefined): string {
   } catch {
     return "—";
   }
+}
+
+/** Format YYYY-MM-DD for display */
+function formatChallengeDate(dateStr: string | null | undefined): string {
+  if (!dateStr?.trim()) return "—";
+  try {
+    const d = new Date(dateStr + "T12:00:00");
+    return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString(undefined, { dateStyle: "medium" });
+  } catch {
+    return "—";
+  }
+}
+
+function isChallengeActive(challengeDateStr: string | null | undefined): boolean {
+  if (!challengeDateStr?.trim()) return false;
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, "0");
+  const d = String(today.getDate()).padStart(2, "0");
+  const todayStr = `${y}-${m}-${d}`;
+  return challengeDateStr.slice(0, 10) === todayStr;
+}
+
+function GroupChallengeCard({ item }: { item: GroupChallengeItem }) {
+  const ch = mapChallengeFromApi(item.challenge);
+  const active = isChallengeActive(item.challenge.challengeDate);
+  const shortDesc = oneLineSummary(item.challenge.description);
+
+  return (
+    <Link
+      to={`/challenges/${ch.id}`}
+      className={cn(
+        "block rounded-xl border border-border bg-card p-3 shadow-sm transition-colors hover:bg-muted/50",
+        !active && "opacity-80"
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5 mb-1">
+            <span className="font-medium text-foreground truncate">{ch.title}</span>
+            {active ? (
+              <span className="inline-flex shrink-0 items-center rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                Active
+              </span>
+            ) : (
+              <span className="inline-flex shrink-0 items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                Archived
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {formatChallengeDate(item.challenge.challengeDate)}
+          </p>
+          {shortDesc && (
+            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{shortDesc}</p>
+          )}
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            {item.completed && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                <CheckCircle className="size-3" />
+                Completed
+              </span>
+            )}
+            {item.joined && !item.completed && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400">
+                <UserPlus className="size-3" />
+                Joined
+              </span>
+            )}
+          </div>
+        </div>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground mt-0.5" aria-hidden />
+      </div>
+    </Link>
+  );
 }
 
 function MemberRow({
@@ -100,7 +176,7 @@ export function GroupDetailsPage() {
   const { data: myGroups = [] } = useMyGroups();
   const groupFromCache = id ? myGroups.find((g) => g.id === id) : undefined;
   const { data: members = [], isLoading: loadingMembers, isError: errorMembers } = useGroupMembers(id, Boolean(id));
-  const { data: dashboard, isLoading: loadingDashboard, isError: errorDashboard } = useGroupDashboard(id, Boolean(id));
+  const { data: groupChallenges = [], isLoading: loadingChallenges, isError: errorChallenges } = useGroupChallenges(id, Boolean(id));
 
   const groupName = groupFromCache?.name?.trim() || "—";
   const groupDescription = groupFromCache?.description?.trim() || null;
@@ -114,11 +190,6 @@ export function GroupDetailsPage() {
   const createdByDisplay = creatorMember
     ? (creatorMember.name?.trim() || creatorMember.email?.trim() || "—")
     : "—";
-
-  const challenges = dashboard?.challenges ?? [];
-  const mappedChallenges = challenges
-    .map((item) => (item.challenge ? mapChallengeFromApi(item.challenge) : null))
-    .filter(Boolean);
 
   const hasMembersError = errorMembers;
   const showContent = !hasMembersError;
@@ -229,18 +300,18 @@ export function GroupDetailsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {loadingDashboard ? (
+                {loadingChallenges ? (
                   <div className="space-y-2">
-                    <LoadingSkeleton className="h-4 w-full" />
-                    <LoadingSkeleton className="h-4 w-4/5" />
-                    <LoadingSkeleton className="h-4 w-3/5" />
+                    <LoadingSkeleton className="h-20 w-full rounded-xl" />
+                    <LoadingSkeleton className="h-20 w-full rounded-xl" />
+                    <LoadingSkeleton className="h-20 w-full rounded-xl" />
                   </div>
-                ) : errorDashboard ? (
+                ) : errorChallenges ? (
                   <EmptyState
                     title="Challenges unavailable"
                     description="Could not load group challenges."
                   />
-                ) : mappedChallenges.length === 0 ? (
+                ) : groupChallenges.length === 0 ? (
                   <EmptyState
                     title="No challenges yet"
                     description="Challenges for this group will appear here."
@@ -248,26 +319,11 @@ export function GroupDetailsPage() {
                   />
                 ) : (
                   <ul className="space-y-2">
-                    {mappedChallenges.slice(0, 5).map((ch) => (
-                      <li key={ch!.id}>
-                        <Link
-                          to={`/challenges/${ch!.id}`}
-                          className="text-sm font-medium text-primary hover:underline block truncate"
-                        >
-                          {ch!.title}
-                        </Link>
-                        {ch!.challengeDate && (
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {formatDate(ch!.challengeDate)}
-                          </p>
-                        )}
+                    {groupChallenges.map((item) => (
+                      <li key={String(item.challenge.id ?? "")}>
+                        <GroupChallengeCard item={item} />
                       </li>
                     ))}
-                    {mappedChallenges.length > 5 && (
-                      <li className="text-xs text-muted-foreground pt-1">
-                        +{mappedChallenges.length - 5} more
-                      </li>
-                    )}
                   </ul>
                 )}
               </CardContent>

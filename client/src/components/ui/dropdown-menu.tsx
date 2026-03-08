@@ -8,6 +8,10 @@ interface DropdownMenuContextValue {
 
 const DropdownMenuContext = React.createContext<DropdownMenuContextValue | null>(null);
 
+export function useDropdownMenu(): DropdownMenuContextValue | null {
+  return React.useContext(DropdownMenuContext);
+}
+
 interface DropdownMenuProps {
   children: React.ReactNode;
 }
@@ -60,13 +64,19 @@ function DropdownMenuContent({
   children,
   className,
   align = "end",
+  onOpenChange,
 }: {
   children: React.ReactNode;
   className?: string;
   align?: "start" | "end";
+  onOpenChange?: (open: boolean) => void;
 }) {
   const ctx = React.useContext(DropdownMenuContext);
   const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    onOpenChange?.(ctx?.open ?? false);
+  }, [ctx?.open, onOpenChange]);
 
   React.useEffect(() => {
     if (!ctx?.open) return;

@@ -15,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -55,5 +56,8 @@ public class GroupInvite {
     @ManyToOne
     @JoinColumn(name = "invited_by_user_id", insertable = false, updatable = false)
     private User invitedByUser;
+
+    @Column(name = "created_at", updatable = false)
+    private Instant createdAt;
 }
 

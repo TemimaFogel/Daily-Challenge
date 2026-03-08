@@ -20,6 +20,9 @@ public interface GroupInviteRepository extends JpaRepository<GroupInvite, UUID> 
 
     List<GroupInvite> findByInvitedUserIdAndStatus(UUID invitedUserId, GroupInviteStatus status);
 
+    @Query("SELECT DISTINCT i FROM GroupInvite i LEFT JOIN FETCH i.invitedByUser LEFT JOIN FETCH i.group WHERE i.invitedUserId = :userId AND i.status = :status")
+    List<GroupInvite> findByInvitedUserIdAndStatusWithInvitedBy(@Param("userId") UUID invitedUserId, @Param("status") GroupInviteStatus status);
+
     List<GroupInvite> findByStatus(GroupInviteStatus status);
 
     boolean existsByGroupIdAndInvitedUserIdAndStatus(UUID groupId, UUID invitedUserId, GroupInviteStatus status);

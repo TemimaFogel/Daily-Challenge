@@ -1,6 +1,5 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/auth/AuthContext";
-import { HomePage } from "@/pages/HomePage";
 import { DemoPage } from "@/pages/DemoPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { RegisterPage } from "@/pages/RegisterPage";
@@ -11,6 +10,7 @@ import {
   ChallengeDetailsPage,
   CreateChallengePage,
 } from "@/features/challenges";
+import { DashboardPage } from "@/features/dashboard";
 import { GroupsPage, GroupDetailsPage, GroupManagePage } from "@/features/groups";
 import { InvitationsPage } from "@/features/invitations";
 import { HistoryPage } from "@/features/history";
@@ -24,11 +24,12 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route element={<RequireAuth />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/dashboard" element={<HomePage />} />
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/demo" element={<DemoPage />} />
           <Route path="/challenges" element={<ChallengesListPage />} />
           <Route path="/challenges/new" element={<CreateChallengePage />} />
+          <Route path="/challenges/create" element={<Navigate to="/challenges/new" replace />} />
           <Route path="/challenges/:id" element={<ChallengeDetailsPage />} />
           <Route path="/groups" element={<GroupsPage />} />
           <Route path="/groups/:id" element={<GroupDetailsPage />} />

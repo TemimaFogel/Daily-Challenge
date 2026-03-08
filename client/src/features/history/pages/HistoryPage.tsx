@@ -43,6 +43,12 @@ export function HistoryPage() {
 
   const { data, isLoading, isError, refetch } = useHistoryMonth(monthDate);
 
+  const handleMonthChange = (nextMonth: Date) => {
+    setMonthDate(nextMonth);
+    setSelectedDate(null);
+    setSheetOpen(false);
+  };
+
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const monthStats = useMemo(() => {
     if (!data) return { joinedMonth: 0, completedMonth: 0, rate: 0, streak: 0 };
@@ -79,7 +85,7 @@ export function HistoryPage() {
       <div className="flex items-center gap-1 rounded-lg border border-input bg-background p-0.5">
         <button
           type="button"
-          onClick={() => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() - 1))}
+          onClick={() => handleMonthChange(startOfMonth(new Date(monthDate.getFullYear(), monthDate.getMonth() - 1)))}
           className="rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
           aria-label="Previous month"
         >
@@ -87,7 +93,7 @@ export function HistoryPage() {
         </button>
         <button
           type="button"
-          onClick={() => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() + 1))}
+          onClick={() => handleMonthChange(startOfMonth(new Date(monthDate.getFullYear(), monthDate.getMonth() + 1)))}
           className="rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
           aria-label="Next month"
         >
@@ -115,7 +121,7 @@ export function HistoryPage() {
   );
 
   return (
-    <AppLayout title="History">
+    <AppLayout>
       <PageHeader
         title="History"
         description="Your progress across time"
@@ -157,10 +163,11 @@ export function HistoryPage() {
           ) : (
             <HistoryCalendar
               monthDate={monthDate}
-              onMonthChange={setMonthDate}
+              onMonthChange={handleMonthChange}
               selectedDate={selectedDate}
               onSelectDate={handleSelectDate}
               data={data}
+              filter={filter}
             />
           )}
         </div>
@@ -173,6 +180,7 @@ export function HistoryPage() {
               entries={entriesForSelected}
               joinedCount={joinedCount}
               completedCount={completedCount}
+              filter={filter}
               variant="panel"
             />
           )}
@@ -189,6 +197,7 @@ export function HistoryPage() {
             entries={entriesForSelected}
             joinedCount={joinedCount}
             completedCount={completedCount}
+            filter={filter}
             onClose={() => setSheetOpen(false)}
             variant="content"
           />

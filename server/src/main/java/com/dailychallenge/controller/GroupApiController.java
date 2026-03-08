@@ -1,6 +1,7 @@
 package com.dailychallenge.controller;
 
 import com.dailychallenge.dto.group.CreateGroupRequestDTO;
+import com.dailychallenge.dto.group.GroupChallengeItemDTO;
 import com.dailychallenge.dto.group.GroupDTO;
 import com.dailychallenge.dto.group.GroupInviteViewDTO;
 import com.dailychallenge.dto.group.GroupMemberDTO;
@@ -8,6 +9,7 @@ import com.dailychallenge.dto.group.GroupSummaryDTO;
 import com.dailychallenge.dto.group.InviteRequestDTO;
 import com.dailychallenge.dto.group.InviteDTO;
 import com.dailychallenge.exception.UnauthorizedException;
+import com.dailychallenge.service.ChallengeService;
 import com.dailychallenge.service.CurrentUserService;
 import com.dailychallenge.service.GroupService;
 import com.dailychallenge.service.InviteService;
@@ -36,6 +38,7 @@ public class GroupApiController {
 
     private final GroupService groupService;
     private final InviteService inviteService;
+    private final ChallengeService challengeService;
     private final CurrentUserService currentUserService;
 
     @PostMapping
@@ -57,6 +60,14 @@ public class GroupApiController {
         UUID currentUserId = requireCurrentUserId();
         List<GroupMemberDTO> members = groupService.listMembers(id, currentUserId);
         return ResponseEntity.ok(members);
+    }
+
+    @GetMapping("/{id}/challenges")
+    @Operation(summary = "List group challenges", description = "Returns all challenges for the group (active and archived), with joined/completed for current user. Requires group membership.")
+    public ResponseEntity<List<GroupChallengeItemDTO>> listGroupChallenges(@PathVariable("id") UUID id) {
+        UUID currentUserId = requireCurrentUserId();
+        List<GroupChallengeItemDTO> challenges = challengeService.listGroupChallenges(currentUserId, id);
+        return ResponseEntity.ok(challenges);
     }
 
     @GetMapping("/{id}/invites")
