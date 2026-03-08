@@ -1,11 +1,6 @@
 import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import {
-  SoftCard,
-  LeftSidebarCard,
-  UserAvatar,
-} from "@/components/design";
+import { SoftCard } from "@/components/design";
 import { CreateChallengeCard } from "../components/CreateChallengeCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingSkeleton } from "@/components/ui/LoadingSkeleton";
@@ -17,7 +12,6 @@ import { useTodayTopChallenge } from "../hooks/useTodayTopChallenge";
 import { getTodayLocal } from "@/features/challenges/lib/dateUtils";
 import { DashboardChallengeCard } from "../components/DashboardChallengeCard";
 import { HeroIllustration } from "../components/HeroIllustration";
-import { Filter, Trophy } from "lucide-react";
 import type { PersonalDashboardItemDTO } from "@/api/dashboard.api";
 
 function KpiSkeleton() {
@@ -25,17 +19,6 @@ function KpiSkeleton() {
     <SoftCard>
       <LoadingSkeleton className="h-4 w-2/3 mb-2" />
       <LoadingSkeleton className="h-8 w-1/2" />
-    </SoftCard>
-  );
-}
-
-function ActivityItem({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <SoftCard className="shrink-0 w-[min(100%,280px)] transition-transform hover:scale-[1.02]">
-      <div className="flex items-center gap-3">
-        <div className="text-muted-foreground [&_svg]:size-5 shrink-0">{icon}</div>
-        <p className="text-sm text-foreground line-clamp-2">{text}</p>
-      </div>
     </SoftCard>
   );
 }
@@ -72,6 +55,17 @@ function UserJoinIcon() {
   );
 }
 
+function ActivityItem({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <SoftCard className="shrink-0 w-[min(100%,280px)] transition-transform hover:scale-[1.02]">
+      <div className="flex items-center gap-3">
+        <div className="text-muted-foreground [&_svg]:size-5 shrink-0">{icon}</div>
+        <p className="text-sm text-foreground line-clamp-2">{text}</p>
+      </div>
+    </SoftCard>
+  );
+}
+
 export function DashboardPage() {
   const { data: dashboard, isLoading } = usePersonalDashboard();
   const { data: currentUser } = useCurrentUser();
@@ -103,42 +97,9 @@ export function DashboardPage() {
     return items.slice(0, 6);
   })();
 
-  const leftSidebar = (
-    <div className="space-y-4">
-      <LeftSidebarCard title="Filter" headerVariant="secondary" icon={<Filter className="size-5" />}>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Category</label>
-            <select className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-              <option>All</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">By user</label>
-            <input
-              type="text"
-              placeholder="Type username..."
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground"
-            />
-          </div>
-        </div>
-      </LeftSidebarCard>
-      <LeftSidebarCard title="Profile" headerVariant="primary">
-        <div className="flex flex-col items-center gap-2">
-          <UserAvatar name={displayName} imageUrl={currentUser?.profileImageUrl} size="lg" />
-          <p className="font-medium text-foreground">{displayName}</p>
-        </div>
-      </LeftSidebarCard>
-      <LeftSidebarCard title="Top Users" headerVariant="primary" icon={<Trophy className="size-5" />}>
-        <p className="text-sm text-muted-foreground">Coming soon</p>
-      </LeftSidebarCard>
-    </div>
-  );
-
-  const rightSidebar = <CreateChallengeCard />;
-
-  const mainContent = (
-    <div className="space-y-8">
+  return (
+    <AppLayout fullWidth>
+      <div className="mx-auto w-full max-w-5xl space-y-8 px-4 py-6">
       <SoftCard largeRadius className="overflow-hidden">
         <div className="bg-gradient-to-r from-primary/10 via-secondary/5 to-accent/10 dark:from-primary/15 dark:via-secondary/10 dark:to-accent/15 p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="min-w-0 flex-1">
@@ -221,7 +182,7 @@ export function DashboardPage() {
       </section>
 
       <section>
-        <h2 className="text-base font-semibold text-foreground mb-4">Your Active Challenges</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Your Active Challenges</h2>
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <LoadingSkeleton className="h-32 rounded-2xl" />
@@ -242,8 +203,14 @@ export function DashboardPage() {
         )}
       </section>
 
+        {/* Create Challenge CTA */}
+        <section aria-label="Create challenge" className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">Create your next challenge</h2>
+          <CreateChallengeCard />
+        </section>
+
       <section>
-        <h2 className="text-base font-semibold text-foreground mb-4">Recent Activity</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Recent Activity</h2>
         {recentActivity.length === 0 ? (
           <EmptyState title="No activity yet" description="Complete or join challenges to see your activity here." />
         ) : (
@@ -254,14 +221,7 @@ export function DashboardPage() {
           </div>
         )}
       </section>
-    </div>
-  );
-
-  return (
-    <AppLayout fullWidth>
-      <DashboardLayout leftSidebar={leftSidebar} rightSidebar={rightSidebar}>
-        {mainContent}
-      </DashboardLayout>
+      </div>
     </AppLayout>
   );
 }

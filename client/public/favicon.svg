@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="12" fill="url(#trophy-bg)"/>
+  <!-- Trophy cup -->
+  <path d="M20 18h24v10c0 8-4 14-12 16v4h-4v-4c-8-2-12-8-12-16V18z" fill="url(#trophy-cup)" stroke="url(#trophy-stroke)" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- Handles -->
+  <path d="M20 22c-2 0-4 2-4 6s2 6 4 6" stroke="url(#trophy-stroke)" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <path d="M44 22c2 0 4 2 4 6s-2 6-4 6" stroke="url(#trophy-stroke)" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <!-- Base -->
+  <path d="M26 44h12v4H26v-4zm2-2h8l1 2H25l1-2z" fill="url(#trophy-base)" stroke="url(#trophy-stroke)" stroke-width="1" stroke-linejoin="round"/>
+  <!-- Star/achievement accent -->
+  <circle cx="32" cy="26" r="3" fill="url(#trophy-highlight)"/>
+  <defs>
+    <linearGradient id="trophy-bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#c026d3"/>
+    </linearGradient>
+    <linearGradient id="trophy-cup" x1="32" y1="18" x2="32" y2="44" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fef3c7"/>
+      <stop offset="0.5" stop-color="#fde68a"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="trophy-stroke" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#b45309"/>
+      <stop offset="1" stop-color="#92400e"/>
+    </linearGradient>
+    <linearGradient id="trophy-base" x1="32" y1="42" x2="32" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d97706"/>
+      <stop offset="1" stop-color="#b45309"/>
+    </linearGradient>
+    <radialGradient id="trophy-highlight" cx="32" cy="26" r="3" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff"/>
+      <stop offset="0.6" stop-color="#fef3c7"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </radialGradient>
+  </defs>
+</svg>

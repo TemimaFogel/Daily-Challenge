@@ -47,3 +47,13 @@ export async function register(
   });
   return data ?? {};
 }
+
+/** POST /api/auth/forgot-password - always returns 200 (do not reveal if email exists). */
+export async function forgotPassword(email: string): Promise<void> {
+  await http.post("/api/auth/forgot-password", { email: email.trim() });
+}
+
+/** POST /api/auth/reset-password - returns 200 on success, 400 if token invalid/expired. */
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  await http.post("/api/auth/reset-password", { token: token.trim(), newPassword: newPassword.trim() });
+}
