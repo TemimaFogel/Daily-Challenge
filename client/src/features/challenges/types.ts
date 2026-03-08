@@ -45,6 +45,17 @@ export interface Challenge {
   completedToday?: boolean;
 }
 
+/** Comment on a challenge (from GET /api/challenges/:id/comments). */
+export interface Comment {
+  id: string;
+  challengeId: string;
+  userId: string;
+  userDisplayName: string;
+  userProfileImageUrl: string | null;
+  content: string;
+  createdAt: string;
+}
+
 /** User who completed a challenge on a given date (from GET /api/challenges/:id/completions). */
 export interface CompletionUser {
   id: string;

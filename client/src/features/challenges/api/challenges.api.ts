@@ -6,7 +6,7 @@ import {
   mapChallengeStatsFromApi,
   mapGroupOptionFromApi,
 } from "./mappers";
-import type { Challenge, ChallengeStats, GroupOption, CompletionUser } from "../types";
+import type { Challenge, ChallengeStats, GroupOption, CompletionUser, Comment } from "../types";
 
 function mapCompletionUserFromApi(d: {
   id?: string | null;
@@ -21,6 +21,33 @@ function mapCompletionUserFromApi(d: {
     profileImageUrl: d.profileImageUrl != null && String(d.profileImageUrl).trim() !== "" ? String(d.profileImageUrl) : null,
   };
 }
+
+const COMMENT_MAX_LENGTH = 500;
+
+function mapCommentFromApi(d: {
+  id?: string | null;
+  challengeId?: string | null;
+  userId?: string | null;
+  userDisplayName?: string | null;
+  userProfileImageUrl?: string | null;
+  content?: string | null;
+  createdAt?: string | null;
+}): Comment {
+  return {
+    id: d.id != null ? String(d.id) : "",
+    challengeId: d.challengeId != null ? String(d.challengeId) : "",
+    userId: d.userId != null ? String(d.userId) : "",
+    userDisplayName: d.userDisplayName != null ? String(d.userDisplayName) : "—",
+    userProfileImageUrl:
+      d.userProfileImageUrl != null && String(d.userProfileImageUrl).trim() !== ""
+        ? String(d.userProfileImageUrl)
+        : null,
+    content: d.content != null ? String(d.content) : "",
+    createdAt: d.createdAt != null ? String(d.createdAt) : "",
+  };
+}
+
+export { COMMENT_MAX_LENGTH };
 
 const BASE = "/api/challenges";
 
@@ -73,6 +100,20 @@ export const challengesApi = {
 
   complete(id: string): Promise<void> {
     return http.post(`${BASE}/${id}/complete`).then(() => undefined);
+  },
+
+  /** GET /api/challenges/:id/comments */
+  getComments(id: string): Promise<Comment[]> {
+    return http
+      .get<Comment[]>(`${BASE}/${id}/comments`)
+      .then((r) => (Array.isArray(r.data) ? r.data : []).map(mapCommentFromApi));
+  },
+
+  /** POST /api/challenges/:id/comments */
+  postComment(id: string, content: string): Promise<Comment> {
+    return http
+      .post<Comment>(`${BASE}/${id}/comments`, { content: content.trim() })
+      .then((r) => mapCommentFromApi(r.data ?? ({} as Comment)));
   },
 
   /** GET /api/challenges/:id/completions?date=YYYY-MM-DD (date optional, defaults to today). */

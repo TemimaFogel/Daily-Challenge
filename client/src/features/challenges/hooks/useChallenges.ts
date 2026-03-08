@@ -11,6 +11,7 @@ const KEYS = {
   stats: (id: string) => ["challenges", "stats", id] as const,
   completions: (id: string, date?: string) =>
     ["challenges", "completions", id, date ?? ""] as const,
+  comments: (id: string) => ["challenges", "comments", id] as const,
   groupOptions: () => ["challenges", "groupOptions"] as const,
   personalDashboard: (userId: string) => ["dashboard", "personal", userId] as const,
 };
@@ -61,6 +62,27 @@ export function useChallengeCompletions(id: string | undefined, date?: string, e
   });
 }
 
+/** Comments for a challenge (newest first). */
+export function useChallengeComments(id: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: KEYS.comments(id ?? ""),
+    queryFn: () => challengesApi.getComments(id!),
+    enabled: enabled && !!id,
+  });
+}
+
+export function usePostComment(challengeId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (content: string) => challengesApi.postComment(challengeId!, content),
+    onSuccess: () => {
+      if (challengeId) {
+        qc.invalidateQueries({ queryKey: KEYS.comments(challengeId) });
+      }
+    },
+  });
+}
+
 export function useGroupOptions(enabled = true) {
   return useQuery({
     queryKey: KEYS.groupOptions(),
@@ -102,7 +124,7 @@ export function useJoinChallenge() {
     },
     onError: (_err, _id, ctx) => {
       ctx?.prevList?.forEach(([key, data]) => {
-        if (key != null && data != null) qc.setQueryData(key, data);
+        if (key != null && data != null) qc.setQueryData(key as readonly unknown[], data);
       });
     },
     onSettled: () => {

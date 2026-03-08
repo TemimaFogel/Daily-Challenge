@@ -1,14 +1,17 @@
 package com.dailychallenge.controller;
 
+import com.dailychallenge.dto.challenge.CommentDTO;
 import com.dailychallenge.dto.challenge.ChallengeDTO;
 import com.dailychallenge.dto.challenge.ChallengeQueryDTO;
 import com.dailychallenge.dto.challenge.ChallengeStatsDTO;
 import com.dailychallenge.dto.challenge.CompletionUserDTO;
 import com.dailychallenge.dto.challenge.CreateChallengeRequestDTO;
+import com.dailychallenge.dto.challenge.CreateCommentRequestDTO;
 import com.dailychallenge.dto.group.GroupOptionDTO;
 import com.dailychallenge.entity.Visibility;
 import com.dailychallenge.exception.UnauthorizedException;
 import com.dailychallenge.service.ChallengeService;
+import com.dailychallenge.service.CommentService;
 import com.dailychallenge.service.CompletionService;
 import com.dailychallenge.service.CurrentUserService;
 import com.dailychallenge.service.GroupService;
@@ -43,6 +46,7 @@ import java.util.UUID;
 public class ChallengeApiController {
 
     private final ChallengeService challengeService;
+    private final CommentService commentService;
     private final ParticipationService participationService;
     private final CompletionService completionService;
     private final StatsService statsService;
@@ -134,6 +138,37 @@ public class ChallengeApiController {
         UUID currentUserId = requireCurrentUserId();
         ChallengeStatsDTO stats = statsService.buildChallengeStats(currentUserId, id);
         return ResponseEntity.ok(stats);
+    }
+
+    @GetMapping("/{id}/comments")
+    @Operation(summary = "List comments", description = "Returns all comments for the challenge (newest first). Requires same access as viewing the challenge.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "List of comments"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Not allowed to view this challenge"),
+            @ApiResponse(responseCode = "404", description = "Challenge not found")
+    })
+    public ResponseEntity<List<CommentDTO>> getComments(@PathVariable("id") UUID id) {
+        UUID currentUserId = requireCurrentUserId();
+        List<CommentDTO> comments = commentService.listComments(currentUserId, id);
+        return ResponseEntity.ok(comments);
+    }
+
+    @PostMapping("/{id}/comments")
+    @Operation(summary = "Add a comment", description = "Post a comment (auth required). Content trimmed, max 500 characters.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Comment created"),
+            @ApiResponse(responseCode = "400", description = "Blank or too long content"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Not allowed to view this challenge"),
+            @ApiResponse(responseCode = "404", description = "Challenge not found")
+    })
+    public ResponseEntity<CommentDTO> postComment(
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody CreateCommentRequestDTO request) {
+        UUID currentUserId = requireCurrentUserId();
+        CommentDTO created = commentService.addComment(currentUserId, id, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @GetMapping("/{id}/completions")

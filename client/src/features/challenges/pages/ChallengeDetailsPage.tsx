@@ -8,6 +8,8 @@ import {
   useChallenge,
   useChallengeStats,
   useChallengeCompletions,
+  useChallengeComments,
+  usePostComment,
   useJoinChallenge,
   useCompleteChallenge,
   usePersonalDashboard,
@@ -18,6 +20,14 @@ import { formatDateSafe } from "../api/mappers";
 import { resolveApiUrl } from "@/lib/urls";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { getTodayLocal, toDateOnly } from "../lib/dateUtils";
+import { UserAvatar } from "@/components/design/UserAvatar";
+import { COMMENT_MAX_LENGTH } from "../api/challenges.api";
+import type { Comment } from "../types";
+import { formatDistanceToNow } from "date-fns";
+import { MessageCircle } from "lucide-react";
+import { useState } from "react";
+import { useAuth } from "@/auth/AuthContext";
+import { cn } from "@/lib/utils";
 
 function BellIcon() {
   return (
@@ -52,8 +62,13 @@ export function ChallengeDetailsPage() {
   const { data: completionsToday = [], isLoading: loadingCompletions } = useChallengeCompletions(id);
   const { data: dashboard } = usePersonalDashboard();
   const { data: currentUser } = useCurrentUser();
+  const { token } = useAuth();
+  const isAuthenticated = !!token;
   const join = useJoinChallenge();
   const complete = useCompleteChallenge();
+  const { data: comments = [], isLoading: loadingComments } = useChallengeComments(id);
+  const postComment = usePostComment(id);
+  const [commentText, setCommentText] = useState("");
 
   const todayLocal = getTodayLocal(currentUser?.timezone ?? undefined);
   const challengeDateLocal = challenge ? toDateOnly(challenge.challengeDate) : "";
@@ -295,6 +310,132 @@ export function ChallengeDetailsPage() {
           ) : null}
         </aside>
       </div>
+
+      {/* Comments section */}
+      <section className="mt-10 border-t border-border pt-8" aria-labelledby="comments-heading">
+        <h2
+          id="comments-heading"
+          className="flex items-center gap-2 text-lg font-semibold text-foreground mb-6"
+        >
+          <MessageCircle className="size-5 text-muted-foreground" />
+          What people say about this challenge
+        </h2>
+
+        {isAuthenticated && (
+          <div className="mb-6">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const trimmed = commentText.trim();
+                if (!trimmed || postComment.isPending) return;
+                postComment.mutate(trimmed, {
+                  onSuccess: () => {
+                    setCommentText("");
+                  },
+                });
+              }}
+              className="space-y-3"
+            >
+              <textarea
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value.slice(0, COMMENT_MAX_LENGTH))}
+                placeholder="Share your thoughts…"
+                rows={3}
+                maxLength={COMMENT_MAX_LENGTH}
+                className={cn(
+                  "w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground",
+                  "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                  "resize-y min-h-[80px]"
+                )}
+                aria-label="Comment"
+              />
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={!commentText.trim() || postComment.isPending}
+                  className={cn(
+                    "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                    commentText.trim() && !postComment.isPending
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "bg-muted text-muted-foreground cursor-not-allowed"
+                  )}
+                >
+                  {postComment.isPending ? "Posting…" : "Post comment"}
+                </button>
+                <span className="text-xs text-muted-foreground">
+                  {commentText.length}/{COMMENT_MAX_LENGTH}
+                </span>
+              </div>
+              {postComment.isError && (
+                <p className="text-sm text-destructive">
+                  {postComment.error instanceof Error
+                    ? postComment.error.message
+                    : "Failed to post comment. Try again."}
+                </p>
+              )}
+            </form>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {loadingComments ? (
+            <>
+              <LoadingSkeleton className="h-20 w-full rounded-xl" />
+              <LoadingSkeleton className="h-20 w-full rounded-xl" />
+              <LoadingSkeleton className="h-20 w-full rounded-xl" />
+            </>
+          ) : comments.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-10 text-center">
+              <MessageCircle className="size-10 text-muted-foreground mx-auto mb-3 opacity-60" />
+              <p className="text-sm font-medium text-foreground">No comments yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {isAuthenticated
+                  ? "Be the first to share your thoughts."
+                  : "Sign in to join the conversation."}
+              </p>
+            </div>
+          ) : (
+            <ul className="space-y-3">
+              {comments.map((comment) => (
+                <CommentCard key={comment.id} comment={comment} />
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
     </AppLayout>
+  );
+}
+
+function CommentCard({ comment }: { comment: Comment }) {
+  const createdAtFriendly =
+    comment.createdAt && !Number.isNaN(new Date(comment.createdAt).getTime())
+      ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })
+      : "";
+
+  return (
+    <li className="rounded-xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex gap-3">
+        <UserAvatar
+          name={comment.userDisplayName}
+          imageUrl={comment.userProfileImageUrl}
+          size="sm"
+          className="shrink-0 mt-0.5"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline gap-2">
+            <span className="font-medium text-foreground text-sm">
+              {comment.userDisplayName || "—"}
+            </span>
+            {createdAtFriendly && (
+              <span className="text-xs text-muted-foreground">{createdAtFriendly}</span>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">
+            {comment.content}
+          </p>
+        </div>
+      </div>
+    </li>
   );
 }
