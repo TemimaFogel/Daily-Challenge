@@ -88,7 +88,19 @@ export const challengesApi = {
       .then((r) => (Array.isArray(r.data) ? r.data : []).map(mapGroupOptionFromApi));
   },
 
-  create(body: CreateChallengeRequest): Promise<Challenge> {
+  /**
+   * Create a challenge. If image is provided, sends multipart/form-data (request + image);
+   * otherwise sends JSON. When no image is sent, the backend may generate one via AI.
+   */
+  create(body: CreateChallengeRequest, image?: File | null): Promise<Challenge> {
+    if (image != null && image.size > 0) {
+      const form = new FormData();
+      form.append("request", new Blob([JSON.stringify(body)], { type: "application/json" }));
+      form.append("image", image);
+      return http
+        .post<ChallengeDTO>(BASE, form)
+        .then((r) => mapChallengeFromApi(r.data ?? {}));
+    }
     return http
       .post<ChallengeDTO>(BASE, body)
       .then((r) => mapChallengeFromApi(r.data ?? {}));

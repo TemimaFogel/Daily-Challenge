@@ -14,6 +14,7 @@ import {
   useCompleteChallenge,
   usePersonalDashboard,
 } from "../hooks/useChallenges";
+import { ChallengeCardImage } from "../components/ChallengeCardImage";
 import { ChallengeStatsCard } from "../components/ChallengeStatsCard";
 import { AvatarStack } from "../components/AvatarStack";
 import { formatDateSafe } from "../api/mappers";
@@ -172,6 +173,9 @@ export function ChallengeDetailsPage() {
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         <div className="flex-1 min-w-0">
           <Card className="rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="w-full h-44 sm:h-52 shrink-0 overflow-hidden rounded-t-2xl bg-muted">
+              <ChallengeCardImage imageUrl={challenge.imageUrl} title={challenge.title} className="h-44 sm:h-52 w-full" />
+            </div>
             <CardHeader>
               <div className="flex items-center gap-2 flex-wrap">
                 <CardTitle className="text-xl font-bold">{challenge.title}</CardTitle>

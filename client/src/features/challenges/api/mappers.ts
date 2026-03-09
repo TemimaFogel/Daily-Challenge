@@ -49,6 +49,10 @@ export function mapChallengeFromApi(dto: ChallengeDTO): Challenge {
     dto.groupId != null && String(dto.groupId).trim() !== ""
       ? String(dto.groupId)
       : null;
+  const imageUrl =
+    dto.imageUrl != null && String(dto.imageUrl).trim() !== ""
+      ? String(dto.imageUrl).trim()
+      : null;
   const createdAt = dto.createdAt != null ? String(dto.createdAt) : "";
 
   return {
@@ -59,6 +63,7 @@ export function mapChallengeFromApi(dto: ChallengeDTO): Challenge {
     challengeDate,
     creatorId,
     groupId,
+    imageUrl,
     createdAt,
   };
 }

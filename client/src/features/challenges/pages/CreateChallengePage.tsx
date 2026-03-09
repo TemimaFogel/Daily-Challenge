@@ -18,6 +18,7 @@ export function CreateChallengePage() {
   const [visibility, setVisibility] = useState<Visibility>("PUBLIC");
   const [groupId, setGroupId] = useState<string>("");
   const [challengeDate, setChallengeDate] = useState<string>("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +29,7 @@ export function CreateChallengePage() {
         visibility,
         groupId: visibility === "GROUP" && groupId ? groupId : null,
         challengeDate: challengeDate || undefined,
+        image: imageFile ?? undefined,
       },
       {
         onSuccess: (data) => {
@@ -113,6 +115,20 @@ export function CreateChallengePage() {
                 value={challengeDate}
                 onChange={(e) => setChallengeDate(e.target.value)}
               />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">
+                Upload challenge image (optional)
+              </label>
+              <Input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+                className="cursor-pointer"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                If no image is uploaded, an AI-generated image will be created automatically.
+              </p>
             </div>
             {create.isError && (
               <p className="text-sm text-destructive">

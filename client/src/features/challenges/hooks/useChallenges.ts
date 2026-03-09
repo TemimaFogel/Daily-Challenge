@@ -94,7 +94,17 @@ export function useGroupOptions(enabled = true) {
 export function useCreateChallenge() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: CreateChallengeRequest) => challengesApi.create(body),
+    mutationFn: (payload: CreateChallengeRequest & { image?: File | null }) =>
+      challengesApi.create(
+        {
+          title: payload.title,
+          description: payload.description,
+          visibility: payload.visibility,
+          groupId: payload.groupId,
+          challengeDate: payload.challengeDate,
+        },
+        payload.image
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["challenges"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });

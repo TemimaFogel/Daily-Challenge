@@ -23,6 +23,7 @@ public class ChallengeMapper {
                 .challengeDate(entity.getChallengeDate())
                 .creatorId(entity.getCreatorId())
                 .groupId(entity.getGroupId())
+                .imageUrl(entity.getImageUrl())
                 .createdAt(entity.getCreatedAt())
                 .build();
     }

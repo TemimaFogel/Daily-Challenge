@@ -27,5 +27,7 @@ public class ChallengeDTO {
     private LocalDate challengeDate;
     private UUID creatorId;
     private UUID groupId;
+    @Schema(description = "URL path or full URL of the challenge card image (user-uploaded or AI-generated)")
+    private String imageUrl;
     private Instant createdAt;
 }

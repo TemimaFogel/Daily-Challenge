@@ -55,6 +55,9 @@ public class Challenge {
     @Column(name = "group_id")
     private UUID groupId;
 
+    @Column(name = "image_url", length = 1024)
+    private String imageUrl;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 

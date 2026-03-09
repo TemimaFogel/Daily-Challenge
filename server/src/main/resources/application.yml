@@ -36,3 +36,12 @@ app:
     # Frontend base URL for reset link (e.g. http://localhost:5173). Override in production.
     base-url: http://localhost:5173
     expiration-minutes: 60
+
+# Hugging Face Inference Providers (router) for AI-generated challenge images (when user does not upload an image).
+# Set HF_TOKEN env var. If unset or generation fails, challenge gets fallback placeholder imageUrl.
+# Endpoint: https://router.huggingface.co/hf-inference/models/{model}
+huggingface:
+  api:
+    token: ${HF_TOKEN:}
+    # Text-to-image model (must be available on Inference Providers). Default: FLUX.1-schnell (fast, router-supported).
+    model: black-forest-labs/FLUX.1-schnell

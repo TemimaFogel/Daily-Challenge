@@ -10,6 +10,7 @@ import com.dailychallenge.dto.challenge.CreateCommentRequestDTO;
 import com.dailychallenge.dto.group.GroupOptionDTO;
 import com.dailychallenge.entity.Visibility;
 import com.dailychallenge.exception.UnauthorizedException;
+import com.dailychallenge.service.ChallengeImageService;
 import com.dailychallenge.service.ChallengeService;
 import com.dailychallenge.service.CommentService;
 import com.dailychallenge.service.CompletionService;
@@ -20,6 +21,7 @@ import com.dailychallenge.service.StatsService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -33,8 +35,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
@@ -52,6 +57,7 @@ public class ChallengeApiController {
     private final StatsService statsService;
     private final GroupService groupService;
     private final CurrentUserService currentUserService;
+    private final ChallengeImageService challengeImageService;
 
     @GetMapping("/group-options")
     @Operation(summary = "List group options for Create Challenge dropdown", description = "Returns the current user's groups in a compact form (id, label, description) for populating a group selector when creating a challenge with visibility=GROUP. Reuses same data as GET /api/groups/my.")
@@ -65,10 +71,30 @@ public class ChallengeApiController {
         return ResponseEntity.ok(options);
     }
 
-    @PostMapping
-    public ResponseEntity<ChallengeDTO> createChallenge(@Valid @RequestBody CreateChallengeRequestDTO request) {
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Create challenge (JSON)", description = "Create a challenge with JSON body. No image: AI will generate one if configured, or leave null.")
+    public ResponseEntity<ChallengeDTO> createChallengeJson(@Valid @RequestBody CreateChallengeRequestDTO request) {
         UUID currentUserId = requireCurrentUserId();
-        ChallengeDTO created = challengeService.createChallenge(currentUserId, request);
+        ChallengeDTO created = challengeService.createChallenge(currentUserId, request, null);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Create challenge with optional image", description = "Create a challenge. Part 'request' (JSON) required, part 'image' (file) optional. If image omitted, AI may generate one.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Challenge created"),
+            @ApiResponse(responseCode = "400", description = "Validation error or invalid image (max 5MB, jpeg/png/webp)"),
+            @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
+    public ResponseEntity<ChallengeDTO> createChallengeMultipart(
+            @RequestPart("request") @Valid CreateChallengeRequestDTO request,
+            @RequestPart(value = "image", required = false) MultipartFile image) throws IOException {
+        UUID currentUserId = requireCurrentUserId();
+        String imageUrl = null;
+        if (image != null && !image.isEmpty()) {
+            imageUrl = challengeImageService.saveUploadedImage(image);
+        }
+        ChallengeDTO created = challengeService.createChallenge(currentUserId, request, imageUrl);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 

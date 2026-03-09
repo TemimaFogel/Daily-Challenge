@@ -11,6 +11,7 @@ export interface ChallengeDTO {
   challengeDate?: string | null;
   creatorId?: string | null;
   groupId?: string | null;
+  imageUrl?: string | null;
   createdAt?: string | null;
 }
 
@@ -38,6 +39,8 @@ export interface Challenge {
   challengeDate: string;
   creatorId: string;
   groupId: string | null;
+  /** URL path or full URL for challenge card image (user-uploaded or AI-generated). Null = use placeholder. */
+  imageUrl: string | null;
   createdAt: string;
   /** Set by client when user has joined (from dashboard or optimistic update). */
   isJoined?: boolean;

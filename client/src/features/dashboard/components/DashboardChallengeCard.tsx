@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { SoftCard } from "@/components/design";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ChallengeCardImage } from "@/features/challenges/components/ChallengeCardImage";
 import { cn } from "@/lib/utils";
 import { oneLineSummary } from "@/features/challenges/api/mappers";
 import { mapChallengeFromApi } from "@/features/challenges/api/mappers";
@@ -24,8 +25,11 @@ export function DashboardChallengeCard({
 
   return (
     <Link to={`/challenges/${c.id}`} className="block transition-transform hover:scale-[1.02]">
-      <SoftCard className={`flex flex-col overflow-hidden cursor-pointer p-4 ${className ?? ""}`}>
-        <div className="pb-2">
+      <SoftCard className={`flex flex-col overflow-hidden cursor-pointer p-0 ${className ?? ""}`}>
+        <div className="w-full h-36 shrink-0 overflow-hidden rounded-t-2xl bg-muted">
+          <ChallengeCardImage imageUrl={c.imageUrl} title={c.title} className="h-36 w-full" />
+        </div>
+        <div className="p-4 pb-2">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <h3 className="font-semibold text-foreground line-clamp-2">
@@ -48,7 +52,7 @@ export function DashboardChallengeCard({
             </span>
           </div>
         </div>
-        <div className="pt-2">
+        <div className="px-4 pb-4 pt-2">
           {completedToday ? (
             <Button
               className="w-full bg-accent text-accent-foreground hover:bg-accent border-0 cursor-default"

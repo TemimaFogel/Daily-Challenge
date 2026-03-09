@@ -15,6 +15,7 @@ import com.dailychallenge.repository.GroupMemberRepository;
 import com.dailychallenge.repository.ParticipantRepository;
 import com.dailychallenge.repository.GroupRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,7 @@ import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ChallengeService {
 
     private final ChallengeRepository challengeRepository;
@@ -37,9 +39,16 @@ public class ChallengeService {
     private final ParticipantRepository participantRepository;
     private final CompletionRepository completionRepository;
     private final DailyZone dailyZone;
+    private final HuggingFaceImageService huggingFaceImageService;
+    private final ChallengeImageService challengeImageService;
 
+    /**
+     * Creates a challenge. imageUrl is always set: from upload, from AI generation, or from placeholder.
+     */
     @Transactional
-    public ChallengeDTO createChallenge(UUID authUserId, CreateChallengeRequestDTO dto) {
+    public ChallengeDTO createChallenge(UUID authUserId, CreateChallengeRequestDTO dto, String optionalImageUrl) {
+        log.info("Challenge creation started for user {} (uploaded image: {})", authUserId, optionalImageUrl != null && !optionalImageUrl.isBlank() ? "yes" : "no");
+
         if (dto.getVisibility() == Visibility.GROUP && dto.getGroupId() == null) {
             throw new IllegalArgumentException("Group ID is required for GROUP visibility");
         }
@@ -52,6 +61,8 @@ public class ChallengeService {
         }
 
         LocalDate challengeDate = dto.getChallengeDate() != null ? dto.getChallengeDate() : dailyZone.today();
+        String initialImageUrl = optionalImageUrl != null && !optionalImageUrl.isBlank() ? optionalImageUrl : null;
+
         Challenge challenge = Challenge.builder()
                 .title(dto.getTitle().trim())
                 .description(dto.getDescription().trim())
@@ -59,8 +70,27 @@ public class ChallengeService {
                 .challengeDate(challengeDate)
                 .creatorId(authUserId)
                 .groupId(dto.getVisibility() == Visibility.GROUP ? dto.getGroupId() : null)
+                .imageUrl(initialImageUrl)
                 .build();
         challenge = challengeRepository.save(challenge);
+
+        if (challenge.getImageUrl() == null) {
+            log.info("Challenge created without uploaded image; starting Hugging Face generation for challenge id={}", challenge.getId());
+            String generatedUrl = huggingFaceImageService.generateAndSaveChallengeImage(challenge.getTitle(), challenge.getDescription());
+            if (generatedUrl != null) {
+                log.info("Image saved; assigning imageUrl to challenge id={}", challenge.getId());
+                challenge.setImageUrl(generatedUrl);
+                challenge = challengeRepository.save(challenge);
+                log.info("imageUrl assigned; response DTO will return imageUrl={}", challenge.getImageUrl());
+            } else {
+                String fallbackUrl = challengeImageService.getPlaceholderImageUrl();
+                log.info("Generation failed; assigning fallback placeholder image instead of leaving imageUrl null; challenge id={}", challenge.getId());
+                challenge.setImageUrl(fallbackUrl);
+                challenge = challengeRepository.save(challenge);
+            }
+        }
+
+        log.info("Challenge saved successfully id={} imageUrl={}", challenge.getId(), challenge.getImageUrl());
         return toChallengeDTO(challenge);
     }
 
@@ -249,6 +279,7 @@ public class ChallengeService {
                 .challengeDate(c.getChallengeDate())
                 .creatorId(c.getCreatorId())
                 .groupId(c.getGroupId())
+                .imageUrl(c.getImageUrl())
                 .createdAt(c.getCreatedAt())
                 .build();
     }

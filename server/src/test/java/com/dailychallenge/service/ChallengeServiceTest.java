@@ -12,6 +12,7 @@ import com.dailychallenge.exception.NotFoundException;
 import com.dailychallenge.repository.ChallengeRepository;
 import com.dailychallenge.repository.GroupMemberRepository;
 import com.dailychallenge.repository.GroupRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -29,7 +30,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,10 +54,21 @@ class ChallengeServiceTest {
     @Mock
     private DailyZone dailyZone;
 
+    @Mock
+    private HuggingFaceImageService huggingFaceImageService;
+
+    @Mock
+    private ChallengeImageService challengeImageService;
+
     @InjectMocks
     private ChallengeService challengeService;
 
     private static final LocalDate TEST_DATE = LocalDate.of(2025, 2, 17);
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(challengeImageService.getPlaceholderImageUrl()).thenReturn(ChallengeImageService.PLACEHOLDER_IMAGE_URL);
+    }
 
     @Test
     void assertUserCanJoin_whenChallengeNotFound_throws404() {
@@ -259,9 +273,9 @@ class ChallengeServiceTest {
         when(dailyZone.today()).thenReturn(TEST_DATE);
         when(challengeRepository.save(any(Challenge.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        challengeService.createChallenge(authUserId, dto);
+        challengeService.createChallenge(authUserId, dto, null);
 
-        verify(challengeRepository).save(argThat((Challenge c) ->
+        verify(challengeRepository, times(2)).save(argThat((Challenge c) ->
                 c.getChallengeDate() != null && c.getChallengeDate().equals(TEST_DATE)));
     }
 
@@ -279,9 +293,9 @@ class ChallengeServiceTest {
 
         when(challengeRepository.save(any(Challenge.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        challengeService.createChallenge(authUserId, dto);
+        challengeService.createChallenge(authUserId, dto, null);
 
-        verify(challengeRepository).save(argThat((Challenge c) ->
+        verify(challengeRepository, times(2)).save(argThat((Challenge c) ->
                 c.getChallengeDate() != null && c.getChallengeDate().equals(requestedDate)));
         verify(dailyZone, never()).today();
     }
@@ -432,12 +446,13 @@ class ChallengeServiceTest {
         when(dailyZone.today()).thenReturn(TEST_DATE);
         when(challengeRepository.save(any(Challenge.class))).thenReturn(saved);
 
-        com.dailychallenge.dto.challenge.ChallengeDTO result = challengeService.createChallenge(authUserId, dto);
+        com.dailychallenge.dto.challenge.ChallengeDTO result = challengeService.createChallenge(authUserId, dto, null);
 
         assertThat(result).isNotNull();
         assertThat(result.getVisibility()).isEqualTo(Visibility.PUBLIC);
         assertThat(result.getGroupId()).isNull();
-        verify(challengeRepository).save(argThat((Challenge c) ->
+        assertThat(result.getImageUrl()).isEqualTo(ChallengeImageService.PLACEHOLDER_IMAGE_URL);
+        verify(challengeRepository, times(2)).save(argThat((Challenge c) ->
                 c.getVisibility() == Visibility.PUBLIC && c.getGroupId() == null));
         verify(groupService, never()).isMember(any(), any());
     }
@@ -452,7 +467,7 @@ class ChallengeServiceTest {
                 .groupId(null)
                 .build();
 
-        assertThatThrownBy(() -> challengeService.createChallenge(authUserId, dto))
+        assertThatThrownBy(() -> challengeService.createChallenge(authUserId, dto, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Group ID is required");
 
@@ -472,7 +487,7 @@ class ChallengeServiceTest {
 
         when(groupService.isMember(groupId, authUserId)).thenReturn(false);
 
-        assertThatThrownBy(() -> challengeService.createChallenge(authUserId, dto))
+        assertThatThrownBy(() -> challengeService.createChallenge(authUserId, dto, null))
                 .isInstanceOf(ForbiddenException.class)
                 .hasMessageContaining("member");
 
@@ -502,12 +517,13 @@ class ChallengeServiceTest {
         when(groupService.isMember(groupId, authUserId)).thenReturn(true);
         when(challengeRepository.save(any(Challenge.class))).thenReturn(saved);
 
-        com.dailychallenge.dto.challenge.ChallengeDTO result = challengeService.createChallenge(authUserId, dto);
+        com.dailychallenge.dto.challenge.ChallengeDTO result = challengeService.createChallenge(authUserId, dto, null);
 
         assertThat(result).isNotNull();
         assertThat(result.getVisibility()).isEqualTo(Visibility.GROUP);
         assertThat(result.getGroupId()).isEqualTo(groupId);
-        verify(challengeRepository).save(argThat((Challenge c) ->
+        assertThat(result.getImageUrl()).isEqualTo(ChallengeImageService.PLACEHOLDER_IMAGE_URL);
+        verify(challengeRepository, times(2)).save(argThat((Challenge c) ->
                 c.getVisibility() == Visibility.GROUP && groupId.equals(c.getGroupId())));
     }
 }

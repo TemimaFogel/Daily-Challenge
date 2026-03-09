@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ChallengeCardImage } from "./ChallengeCardImage";
 import { ChallengeParticipantsPreview } from "./ChallengeParticipantsPreview";
 import { cn } from "@/lib/utils";
 import { oneLineSummary } from "../api/mappers";
@@ -48,6 +49,9 @@ export function ChallengeCard({
           className
         )}
       >
+        <div className="w-full h-44 shrink-0 overflow-hidden rounded-t-2xl bg-muted">
+          <ChallengeCardImage imageUrl={challenge.imageUrl} title={challenge.title} className="h-44 w-full" />
+        </div>
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2 flex-wrap">
             <CardTitle className="text-lg font-bold leading-tight line-clamp-2 flex-1 min-w-0">
