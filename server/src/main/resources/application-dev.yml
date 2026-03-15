@@ -11,13 +11,12 @@ spring:
 
   jpa:
     show-sql: true
-
-  # Gmail SMTP for password reset emails (dev). Override MAIL_PASSWORD in production.
+  spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: dailychallenge.web100@gmail.com
-    password: ${MAIL_PASSWORD:uwnlmfgczopqzsxk}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
