@@ -21,6 +21,8 @@ import com.dailychallenge.repository.GroupMemberRepository;
 import com.dailychallenge.repository.GroupRepository;
 import com.dailychallenge.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,12 +33,17 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class InviteService {
 
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final GroupInviteRepository groupInviteRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
+
+    @Value("${app.frontend.base-url:http://localhost:5173}")
+    private String frontendBaseUrl;
 
     @Transactional
     public InviteDTO createInvite(UUID groupId, InviteRequestDTO request, UUID currentUserId) {
@@ -74,9 +81,48 @@ public class InviteService {
                 .createdAt(Instant.now())
                 .build();
         invite = groupInviteRepository.save(invite);
+        log.info("Group invite created for group {} to user {}", group.getName(), invitedUser.getEmail());
+
+        sendGroupInvitationEmailIfPossible(invitedUser, group, currentUserId);
 
         Group savedGroup = groupRepository.findById(groupId).orElse(null);
         return toInviteDTO(invite, invitedUser.getEmail(), savedGroup);
+    }
+
+    /**
+     * Sends a group invitation email to the invited user. Does not throw; on failure only logs.
+     * Invite creation and in-app notifications are unaffected.
+     */
+    private void sendGroupInvitationEmailIfPossible(User invitedUser, Group group, UUID inviterUserId) {
+        try {
+            log.info("Group invitation email sending started (invited user id={}, group={})",
+                invitedUser.getId(), group.getName());
+            String inviterName = userRepository.findById(inviterUserId)
+                    .map(User::getName)
+                    .orElse("Someone");
+            String invitationUrl = (frontendBaseUrl != null ? frontendBaseUrl.trim() : "http://localhost:5173")
+                    .replaceAll("/+$", "") + "/invitations";
+            String toEmail = invitedUser.getEmail();
+            if (toEmail == null || toEmail.isBlank()) {
+                log.warn("Group invitation email skipped: invited user has no email address");
+                return;
+            }
+            boolean sent = emailService.sendGroupInvitationEmail(
+                    toEmail,
+                    invitedUser.getName(),
+                    inviterName,
+                    group.getName(),
+                    invitationUrl
+            );
+            if (sent) {
+                log.info("Group invitation email sent successfully");
+            } else {
+                log.warn("Group invitation email was not sent (mail may be disabled or send failed)");
+            }
+        } catch (Exception e) {
+            log.warn("Group invitation email failed; invite was still created. Error: {} (cause: {})",
+                e.getMessage(), e.getCause() != null ? e.getCause().getMessage() : "none", e);
+        }
     }
 
     /**

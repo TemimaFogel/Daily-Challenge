@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,12 +30,23 @@ const ArrowRightIcon = () => (
   </svg>
 );
 
+function isSafeRedirect(redirect: string | null): redirect is string {
+  if (redirect == null || redirect === "") return false;
+  const trimmed = redirect.trim();
+  if (trimmed.startsWith("//") || trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return false;
+  }
+  return trimmed.startsWith("/");
+}
+
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { login: authLogin } = useAuth();
   const successMessage = (location.state as { message?: string } | null)?.message;
+  const redirectTo = searchParams.get("redirect");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +74,8 @@ export function LoginPage() {
       queryClient.invalidateQueries({ queryKey: ["invites"] });
       queryClient.invalidateQueries({ queryKey: ["groups", "my"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      navigate("/", { replace: true });
+      const target = isSafeRedirect(redirectTo) ? redirectTo : "/";
+      navigate(target, { replace: true });
     } catch (err: unknown) {
       console.error("Login error:", err);
       setError(getErrorMessage(err));

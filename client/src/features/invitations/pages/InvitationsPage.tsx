@@ -102,6 +102,10 @@ export function InvitationsPage() {
 
       <PageHeader title="Invitations" hideTitle />
 
+      <p className="text-sm text-muted-foreground mb-4" role="status">
+        You are viewing invitations for the currently signed-in account. If you expected a different invitation, sign out and sign in with the correct account.
+      </p>
+
       <div className="border-b border-border mb-6">
         <nav className="flex gap-1" aria-label="Tabs">
           <button

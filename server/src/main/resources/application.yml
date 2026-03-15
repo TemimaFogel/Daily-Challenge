@@ -32,6 +32,9 @@ app:
     dir: ./uploads
     # Base URL for public image URLs (e.g. http://localhost:8080). Override in production.
     public-base-url: http://localhost:8080
+  frontend:
+    # Base URL for links in emails (invitations, password reset, etc.). Override in production.
+    base-url: http://localhost:5173
   password-reset:
     # Frontend base URL for reset link (e.g. http://localhost:5173). Override in production.
     base-url: http://localhost:5173
