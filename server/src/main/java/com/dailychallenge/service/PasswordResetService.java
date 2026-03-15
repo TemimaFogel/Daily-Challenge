@@ -6,13 +6,9 @@ import com.dailychallenge.entity.PasswordResetToken;
 import com.dailychallenge.entity.User;
 import com.dailychallenge.repository.PasswordResetTokenRepository;
 import com.dailychallenge.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,22 +24,21 @@ public class PasswordResetService {
 
     private static final int TOKEN_BYTES = 32;
     private static final int DEFAULT_EXPIRATION_MINUTES = 60;
-    private static final String EMAIL_SUBJECT = "Reset your password";
 
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JavaMailSender mailSender;
+    private final EmailService emailService;
 
     public PasswordResetService(
             UserRepository userRepository,
             PasswordResetTokenRepository tokenRepository,
             PasswordEncoder passwordEncoder,
-            @Autowired(required = false) JavaMailSender mailSender) {
+            EmailService emailService) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.passwordEncoder = passwordEncoder;
-        this.mailSender = mailSender;
+        this.emailService = emailService;
     }
 
     @Value("${app.password-reset.base-url:http://localhost:5173}")
@@ -69,6 +64,7 @@ public class PasswordResetService {
         User user = userOpt.get();
         tokenRepository.deleteByUserId(user.getId());
         String token = generateSecureToken();
+        log.info("Reset token created for forgot-password request");
         Instant expiresAt = Instant.now().plusSeconds(expirationMinutes * 60L);
         PasswordResetToken entity = PasswordResetToken.builder()
                 .userId(user.getId())
@@ -78,7 +74,10 @@ public class PasswordResetService {
                 .build();
         tokenRepository.save(entity);
         String resetLink = baseUrl + "/reset-password?token=" + token;
-        sendResetEmail(email, resetLink);
+        boolean sent = emailService.sendResetPasswordEmail(email, resetLink);
+        if (!sent) {
+            log.warn("Password reset email could not be sent for request");
+        }
     }
 
     /**
@@ -112,23 +111,5 @@ public class PasswordResetService {
         byte[] bytes = new byte[TOKEN_BYTES];
         random.nextBytes(bytes);
         return HexFormat.of().formatHex(bytes);
-    }
-
-    private void sendResetEmail(String toEmail, String resetLink) {
-        String body = "Click the link below to reset your password:\n\n" + resetLink + "\n\n"
-                + "If you did not request this, ignore this email.";
-        if (mailSender != null) {
-            try {
-                SimpleMailMessage message = new SimpleMailMessage();
-                message.setTo(toEmail);
-                message.setSubject(EMAIL_SUBJECT);
-                message.setText(body);
-                mailSender.send(message);
-            } catch (Exception e) {
-                log.warn("Failed to send password reset email to {}: {}", toEmail, e.getMessage());
-            }
-        } else {
-            log.info("Password reset link (mail not configured): {}", resetLink);
-        }
     }
 }

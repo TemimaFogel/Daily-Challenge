@@ -3,6 +3,7 @@ package com.dailychallenge.controller;
 import com.dailychallenge.dto.auth.AuthResponseDTO;
 import com.dailychallenge.dto.auth.ForgotPasswordRequestDTO;
 import com.dailychallenge.dto.auth.LoginRequestDTO;
+import com.dailychallenge.dto.auth.MessageResponseDTO;
 import com.dailychallenge.dto.auth.RegisterRequestDTO;
 import com.dailychallenge.dto.auth.ResetPasswordRequestDTO;
 import com.dailychallenge.service.AuthService;
@@ -39,9 +40,13 @@ public class AuthApiController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
+    public ResponseEntity<MessageResponseDTO> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
         passwordResetService.requestPasswordReset(request);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(
+            MessageResponseDTO.builder()
+                .message("If the email exists, a reset link has been sent.")
+                .build()
+        );
     }
 
     @PostMapping("/reset-password")
