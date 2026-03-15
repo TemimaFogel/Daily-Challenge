@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChallengeCardImage } from "./ChallengeCardImage";
+import { ChallengeCardImageWithEdit } from "./ChallengeCardImageWithEdit";
 import { ChallengeParticipantsPreview } from "./ChallengeParticipantsPreview";
 import { cn } from "@/lib/utils";
 import { oneLineSummary } from "../api/mappers";
@@ -13,11 +13,15 @@ interface ChallengeCardProps {
   isJoined?: boolean;
   /** When true, challenge is not for today; no Join action, show Archived/View only. */
   isReadOnly?: boolean;
+  /** When true, show edit overlay on image so creator can replace it. */
+  isCreator?: boolean;
   participantCount?: number | null;
   participantsPreview?: ParticipantPreviewUser[];
   onJoin: (id: string) => void;
   joinLoading?: boolean;
   joinError?: "already_joined" | null;
+  /** Called when image replace/generate fails (e.g. for toast). */
+  onImageError?: (message: string) => void;
   className?: string;
 }
 
@@ -31,11 +35,13 @@ export function ChallengeCard({
   challenge,
   isJoined,
   isReadOnly,
+  isCreator = false,
   participantCount,
   participantsPreview,
   onJoin,
   joinLoading,
   joinError,
+  onImageError,
   className,
 }: ChallengeCardProps) {
   const summary = oneLineSummary(challenge.description);
@@ -49,8 +55,15 @@ export function ChallengeCard({
           className
         )}
       >
-        <div className="w-full h-44 shrink-0 overflow-hidden rounded-t-2xl bg-muted">
-          <ChallengeCardImage imageUrl={challenge.imageUrl} title={challenge.title} className="h-44 w-full" />
+        <div className="w-full h-44 shrink-0 overflow-hidden rounded-t-2xl bg-muted relative">
+          <ChallengeCardImageWithEdit
+            challengeId={challenge.id}
+            imageUrl={challenge.imageUrl}
+            title={challenge.title}
+            isCreator={isCreator}
+            className="h-44 w-full"
+            onError={onImageError}
+          />
         </div>
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2 flex-wrap">

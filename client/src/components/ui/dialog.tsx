@@ -29,15 +29,20 @@ interface DialogContentProps {
 
 function DialogContent({ children, className }: DialogContentProps) {
   const ctx = React.useContext(DialogContext);
-  if (!ctx?.open) return null;
+  const open = ctx?.open ?? false;
 
+  // Clean up body scroll lock when dialog closes or unmounts (e.g. on route change).
+  // Previously the effect had [] deps, so when open became false we returned null but never ran cleanup.
   React.useEffect(() => {
+    if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, []);
+  }, [open]);
+
+  if (!open || !ctx) return null;
 
   return (
     <>

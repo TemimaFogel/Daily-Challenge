@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -226,6 +227,38 @@ public class ChallengeApiController {
         UUID currentUserId = requireCurrentUserId();
         challengeService.deleteChallenge(currentUserId, id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Replace challenge image", description = "Only the challenge creator can replace the image. Accepts image/jpeg, image/png, image/webp; max 5MB.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Challenge updated with new imageUrl"),
+            @ApiResponse(responseCode = "400", description = "Invalid or missing image file"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Only the creator can replace this challenge's image"),
+            @ApiResponse(responseCode = "404", description = "Challenge not found")
+    })
+    public ResponseEntity<ChallengeDTO> replaceChallengeImage(
+            @PathVariable("id") UUID id,
+            @RequestPart("image") MultipartFile image) throws IOException {
+        UUID currentUserId = requireCurrentUserId();
+        String imageUrl = challengeImageService.saveUploadedImage(image);
+        ChallengeDTO updated = challengeService.updateChallengeImage(currentUserId, id, imageUrl);
+        return ResponseEntity.ok(updated);
+    }
+
+    @PutMapping("/{id}/image/generate")
+    @Operation(summary = "Regenerate challenge image with AI", description = "Only the challenge creator. Generates a new image from challenge title + description using Hugging Face; on failure uses placeholder.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Challenge updated with new imageUrl"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Only the creator can regenerate this challenge's image"),
+            @ApiResponse(responseCode = "404", description = "Challenge not found")
+    })
+    public ResponseEntity<ChallengeDTO> regenerateChallengeImage(@PathVariable("id") UUID id) {
+        UUID currentUserId = requireCurrentUserId();
+        ChallengeDTO updated = challengeService.regenerateChallengeImage(currentUserId, id);
+        return ResponseEntity.ok(updated);
     }
 
     private UUID requireCurrentUserId() {

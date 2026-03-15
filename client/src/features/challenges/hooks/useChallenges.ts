@@ -202,3 +202,34 @@ export function useDeleteChallenge() {
     },
   });
 }
+
+/** Replace challenge image (creator only). Invalidates challenge, list, and dashboard so UI updates. */
+export function useReplaceChallengeImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) =>
+      challengesApi.replaceImage(id, file),
+    onSuccess: (updated) => {
+      if (updated?.id) {
+        qc.setQueryData(KEYS.one(updated.id), updated);
+        qc.invalidateQueries({ queryKey: ["challenges"] });
+        qc.invalidateQueries({ queryKey: ["dashboard"] });
+      }
+    },
+  });
+}
+
+/** Regenerate challenge image with AI (creator only). Invalidates challenge, list, and dashboard so UI updates. */
+export function useGenerateChallengeImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => challengesApi.generateImage(id),
+    onSuccess: (updated) => {
+      if (updated?.id) {
+        qc.setQueryData(KEYS.one(updated.id), updated);
+        qc.invalidateQueries({ queryKey: ["challenges"] });
+        qc.invalidateQueries({ queryKey: ["dashboard"] });
+      }
+    },
+  });
+}

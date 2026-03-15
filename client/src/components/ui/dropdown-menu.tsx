@@ -31,20 +31,29 @@ interface DropdownMenuTriggerProps {
   className?: string;
 }
 
+type TriggerChildProps = {
+  onClick?: (e: React.MouseEvent<Element>) => void;
+  className?: string;
+  "aria-expanded"?: boolean;
+  "aria-haspopup"?: string;
+};
+
 function DropdownMenuTrigger({ asChild, children, className }: DropdownMenuTriggerProps) {
   const ctx = React.useContext(DropdownMenuContext);
   if (!ctx) return null;
-  const child = React.Children.only(children) as React.ReactElement;
+  const child = React.Children.only(children) as React.ReactElement<TriggerChildProps>;
   if (asChild && React.isValidElement(child)) {
+    const props = child.props ?? {};
+    const { onClick, className: childClassName, ...rest } = props as TriggerChildProps;
     return React.cloneElement(child, {
-      ...child.props,
-      onClick: (e: React.MouseEvent) => {
-        child.props.onClick?.(e);
+      ...rest,
+      onClick: (e: React.MouseEvent<Element>) => {
+        onClick?.(e);
         ctx.setOpen(!ctx.open);
       },
       "aria-expanded": ctx.open,
       "aria-haspopup": "menu",
-      className: cn(className, child.props.className),
+      className: cn(className, childClassName),
     });
   }
   return (
@@ -118,19 +127,20 @@ function DropdownMenuItem({
   onSelect?: () => void;
 }) {
   const ctx = React.useContext(DropdownMenuContext);
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent<Element>) => {
     onSelect?.();
     ctx?.setOpen(false);
-    (props as React.ButtonHTMLAttributes<HTMLButtonElement>).onClick?.(e);
+    (props as React.ButtonHTMLAttributes<HTMLButtonElement>).onClick?.(e as React.MouseEvent<HTMLButtonElement>);
   };
   const itemClass = cn(
     "relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
     className
   );
   if (asChild && React.isValidElement(children)) {
-    return React.cloneElement(children as React.ReactElement<{ onClick?: (e: React.MouseEvent) => void; className?: string }>, {
+    const childEl = children as React.ReactElement<{ onClick?: (e: React.MouseEvent<Element>) => void; className?: string }>;
+    return React.cloneElement(childEl, {
       onClick: handleClick,
-      className: cn(itemClass, (children as React.ReactElement).props.className),
+      className: cn(itemClass, childEl.props.className),
     });
   }
   const href = (props as React.AnchorHTMLAttributes<HTMLAnchorElement>).href;

@@ -64,6 +64,7 @@ function SheetContent({
   if (!ctx) return null;
   const { open, onOpenChange } = ctx;
 
+  // Body scroll lock: cleanup runs when open becomes false or on unmount (e.g. route change).
   React.useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
     return () => {

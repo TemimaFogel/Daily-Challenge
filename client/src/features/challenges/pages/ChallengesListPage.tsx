@@ -175,11 +175,13 @@ export function ChallengesListPage() {
                     challenge={c}
                     isJoined={true}
                     isReadOnly={!isChallengeToday(c.challengeDate, todayLocal)}
+                    isCreator={currentUser?.id != null && String(currentUser.id) === c.creatorId}
                     onJoin={handleJoin}
                     joinLoading={join.isPending && joiningId === c.id}
                     joinError={
                       joiningId === c.id && joinError409 ? "already_joined" : null
                     }
+                    onImageError={(msg) => setToast(msg)}
                   />
                 ))}
               </div>
@@ -201,11 +203,13 @@ export function ChallengesListPage() {
                     challenge={c}
                     isJoined={false}
                     isReadOnly={!isChallengeToday(c.challengeDate, todayLocal)}
+                    isCreator={currentUser?.id != null && String(currentUser.id) === c.creatorId}
                     onJoin={handleJoin}
                     joinLoading={join.isPending && joiningId === c.id}
                     joinError={
                       joiningId === c.id && joinError409 ? "already_joined" : null
                     }
+                    onImageError={(msg) => setToast(msg)}
                   />
                 ))}
               </div>

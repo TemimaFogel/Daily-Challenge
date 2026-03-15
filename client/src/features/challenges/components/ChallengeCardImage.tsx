@@ -16,7 +16,10 @@ export function ChallengeCardImage({
   className,
   objectFit = "cover",
 }: ChallengeCardImageProps) {
-  const src = imageUrl ? resolveApiUrl(imageUrl) : null;
+  const src =
+    typeof imageUrl === "string" && imageUrl.trim() !== ""
+      ? resolveApiUrl(imageUrl)
+      : null;
 
   if (src) {
     return (

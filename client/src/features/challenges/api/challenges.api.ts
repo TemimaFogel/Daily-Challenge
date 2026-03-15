@@ -139,4 +139,26 @@ export const challengesApi = {
   delete(id: string): Promise<void> {
     return http.delete(`${BASE}/${id}`).then(() => undefined);
   },
+
+  /**
+   * Replace the challenge image (creator only). PUT multipart/form-data with field "image".
+   * Returns updated Challenge with new imageUrl.
+   */
+  replaceImage(id: string, file: File): Promise<Challenge> {
+    const form = new FormData();
+    form.append("image", file);
+    return http
+      .put<ChallengeDTO>(`${BASE}/${id}/image`, form)
+      .then((r) => mapChallengeFromApi(r.data ?? {}));
+  },
+
+  /**
+   * Regenerate the challenge image with AI (creator only). Uses title + description.
+   * Returns updated Challenge with new imageUrl.
+   */
+  generateImage(id: string): Promise<Challenge> {
+    return http
+      .put<ChallengeDTO>(`${BASE}/${id}/image/generate`)
+      .then((r) => mapChallengeFromApi(r.data ?? {}));
+  },
 };

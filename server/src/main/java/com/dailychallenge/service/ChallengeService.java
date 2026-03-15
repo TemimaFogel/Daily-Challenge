@@ -199,6 +199,43 @@ public class ChallengeService {
     }
 
     /**
+     * Replaces the challenge image. Only the creator may update. 404 if not found, 403 if not the creator.
+     * Saves the new image URL on the challenge and returns the updated DTO.
+     */
+    @Transactional
+    public ChallengeDTO updateChallengeImage(UUID authUserId, UUID challengeId, String newImageUrl) {
+        Challenge challenge = challengeRepository.findById(challengeId)
+                .orElseThrow(() -> new NotFoundException("Challenge not found"));
+        if (!challenge.getCreatorId().equals(authUserId)) {
+            throw new ForbiddenException("Only the challenge creator can replace the image");
+        }
+        challenge.setImageUrl(newImageUrl);
+        challenge = challengeRepository.save(challenge);
+        return toChallengeDTO(challenge);
+    }
+
+    /**
+     * Regenerates the challenge image using AI (title + description). Only the creator may use.
+     * Uses HuggingFaceImageService; on failure assigns placeholder. 404 if not found, 403 if not the creator.
+     */
+    @Transactional
+    public ChallengeDTO regenerateChallengeImage(UUID authUserId, UUID challengeId) {
+        Challenge challenge = challengeRepository.findById(challengeId)
+                .orElseThrow(() -> new NotFoundException("Challenge not found"));
+        if (!challenge.getCreatorId().equals(authUserId)) {
+            throw new ForbiddenException("Only the challenge creator can regenerate the image");
+        }
+        String newImageUrl = huggingFaceImageService.generateAndSaveChallengeImage(
+                challenge.getTitle(), challenge.getDescription());
+        if (newImageUrl == null || newImageUrl.isBlank()) {
+            newImageUrl = challengeImageService.getPlaceholderImageUrl();
+        }
+        challenge.setImageUrl(newImageUrl);
+        challenge = challengeRepository.save(challenge);
+        return toChallengeDTO(challenge);
+    }
+
+    /**
      * Returns all challenges for a group, sorted by challenge date descending (newest first).
      * Requires group membership. Each item includes joined and completed for the current user.
      */

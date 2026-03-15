@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SoftCard } from "@/components/design";
@@ -69,6 +70,7 @@ function ActivityItem({ icon, text }: { icon: React.ReactNode; text: string }) {
 export function DashboardPage() {
   const { data: dashboard, isLoading } = usePersonalDashboard();
   const { data: currentUser } = useCurrentUser();
+  const [toast, setToast] = useState<string | null>(null);
 
   const displayName = getDisplayName(currentUser?.name ?? null, currentUser?.email ?? null);
 
@@ -81,6 +83,12 @@ export function DashboardPage() {
 
   const todayLocal = getTodayLocal(currentUser?.timezone ?? undefined);
   const { challenge: todayTopChallenge, isLoading: todayTopLoading } = useTodayTopChallenge(todayLocal);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const recentActivity = ((): Array<{ icon: React.ReactNode; text: string }> => {
     const items: Array<{ icon: React.ReactNode; text: string }> = [];
@@ -195,11 +203,28 @@ export function DashboardPage() {
             action={<Link to="/challenges" className={cn(buttonVariants(), "inline-flex rounded-full")}>Browse Challenges</Link>}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {challenges.map((item: PersonalDashboardItemDTO) => (
-              <DashboardChallengeCard key={item.challenge?.id ?? ""} challenge={item.challenge ?? {}} completedToday={item.completedToday} />
-            ))}
-          </div>
+          <>
+            {toast && (
+              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-md bg-foreground text-background px-4 py-2 text-sm shadow-lg">
+                {toast}
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {challenges.map((item: PersonalDashboardItemDTO) => (
+                <DashboardChallengeCard
+                  key={item.challenge?.id ?? ""}
+                  challenge={item.challenge ?? {}}
+                  completedToday={item.completedToday}
+                  isCreator={
+                    currentUser?.id != null &&
+                    item.challenge?.creatorId != null &&
+                    String(currentUser.id) === String(item.challenge.creatorId)
+                  }
+                  onImageError={(msg) => setToast(msg)}
+                />
+              ))}
+            </div>
+          </>
         )}
       </section>
 

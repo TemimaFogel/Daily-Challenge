@@ -14,7 +14,9 @@ import {
   useCompleteChallenge,
   usePersonalDashboard,
 } from "../hooks/useChallenges";
+import { ChallengeCardImageWithEdit } from "../components/ChallengeCardImageWithEdit";
 import { ChallengeCardImage } from "../components/ChallengeCardImage";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ChallengeStatsCard } from "../components/ChallengeStatsCard";
 import { AvatarStack } from "../components/AvatarStack";
 import { formatDateSafe } from "../api/mappers";
@@ -26,7 +28,7 @@ import { COMMENT_MAX_LENGTH } from "../api/challenges.api";
 import type { Comment } from "../types";
 import { formatDistanceToNow } from "date-fns";
 import { MessageCircle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/auth/AuthContext";
 import { cn } from "@/lib/utils";
 
@@ -70,6 +72,13 @@ export function ChallengeDetailsPage() {
   const { data: comments = [], isLoading: loadingComments } = useChallengeComments(id);
   const postComment = usePostComment(id);
   const [commentText, setCommentText] = useState("");
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const todayLocal = getTodayLocal(currentUser?.timezone ?? undefined);
   const challengeDateLocal = challenge ? toDateOnly(challenge.challengeDate) : "";
@@ -130,9 +139,14 @@ export function ChallengeDetailsPage() {
     return (
       <AppLayout title="Challenge">
         <p className="text-destructive">Challenge not found.</p>
-        <Button variant="outline" className="mt-4" asChild>
-          <Link to="/challenges">Back to Challenges</Link>
-        </Button>
+        <Link
+          to="/challenges"
+          className={cn(
+            "mt-4 inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+          )}
+        >
+          Back to Challenges
+        </Link>
       </AppLayout>
     );
   }
@@ -147,7 +161,26 @@ export function ChallengeDetailsPage() {
     );
   }
 
-  const hasDate = challenge.challengeDate != null && challenge.challengeDate.trim() !== "";
+  // Defensive: avoid rendering main content if challenge is ever undefined (e.g. query refetch / cache transition).
+  const safeChallenge = challenge;
+  if (!safeChallenge) {
+    return (
+      <AppLayout title="Challenge">
+        <LoadingSkeleton className="h-8 w-2/3 mb-4" />
+        <LoadingSkeleton className="h-4 w-full mb-2" />
+        <LoadingSkeleton className="h-4 w-3/4" />
+      </AppLayout>
+    );
+  }
+
+  const challengeId = safeChallenge.id != null && String(safeChallenge.id).trim() !== "" ? String(safeChallenge.id).trim() : "";
+  const hasDate = safeChallenge.challengeDate != null && String(safeChallenge.challengeDate).trim() !== "";
+  const canEditImage =
+    currentUser?.id != null &&
+    safeChallenge.creatorId != null &&
+    String(currentUser.id) === String(safeChallenge.creatorId);
+  const resolvedImageUrl = safeChallenge.imageUrl ?? null;
+  const resolvedTitle = safeChallenge.title ?? "";
   const completionItems =
     completionsToday.length > 0
       ? completionsToday.map((u) => ({
@@ -156,9 +189,16 @@ export function ChallengeDetailsPage() {
         }))
       : [];
 
+  const pageTitle = safeChallenge.title ?? "Challenge";
   return (
-    <AppLayout title={challenge.title}>
-      <div className="mb-6">
+    <AppLayout title={pageTitle}>
+      <>
+        {toast ? (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-md bg-foreground text-background px-4 py-2 text-sm shadow-lg">
+            {toast}
+          </div>
+        ) : null}
+        <div className="mb-6">
         <button
           type="button"
           onClick={handleBack}
@@ -173,12 +213,30 @@ export function ChallengeDetailsPage() {
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         <div className="flex-1 min-w-0">
           <Card className="rounded-2xl border border-border shadow-sm overflow-hidden">
-            <div className="w-full h-44 sm:h-52 shrink-0 overflow-hidden rounded-t-2xl bg-muted">
-              <ChallengeCardImage imageUrl={challenge.imageUrl} title={challenge.title} className="h-44 sm:h-52 w-full" />
+            <div className="w-full h-44 sm:h-52 shrink-0 overflow-hidden rounded-t-2xl bg-muted relative">
+              <ErrorBoundary
+                fallback={
+                  <ChallengeCardImage
+                    imageUrl={resolvedImageUrl}
+                    title={resolvedTitle}
+                    className="h-44 sm:h-52 w-full"
+                    objectFit="cover"
+                  />
+                }
+              >
+                <ChallengeCardImageWithEdit
+                  challengeId={challengeId}
+                  imageUrl={resolvedImageUrl}
+                  title={resolvedTitle}
+                  isCreator={canEditImage}
+                  className="h-44 sm:h-52 w-full"
+                  onError={(msg) => setToast(msg)}
+                />
+              </ErrorBoundary>
             </div>
             <CardHeader>
               <div className="flex items-center gap-2 flex-wrap">
-                <CardTitle className="text-xl font-bold">{challenge.title}</CardTitle>
+                <CardTitle className="text-xl font-bold">{safeChallenge.title}</CardTitle>
                 {isReadOnly && (
                   <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                     Archived
@@ -188,14 +246,14 @@ export function ChallengeDetailsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {challenge.description.trim() !== "" ? challenge.description : "—"}
+                {(safeChallenge.description ?? "").trim() !== "" ? (safeChallenge.description ?? "") : "—"}
               </p>
 
               {hasDate && (
                 <p className="text-sm text-muted-foreground">
                   {isTodayChallenge
-                    ? `Today, ${formatDateSafe(challenge.challengeDate)} · Ends today`
-                    : formatDateSafe(challenge.challengeDate)}
+                    ? `Today, ${formatDateSafe(safeChallenge.challengeDate)} · Ends today`
+                    : formatDateSafe(safeChallenge.challengeDate)}
                 </p>
               )}
 
@@ -262,7 +320,7 @@ export function ChallengeDetailsPage() {
                         className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 border-0"
                         onClick={() => {
                           if (isReadOnly) return;
-                          join.mutate(challenge.id);
+                          join.mutate(safeChallenge.id);
                         }}
                         disabled={join.isPending}
                       >
@@ -281,7 +339,7 @@ export function ChallengeDetailsPage() {
                         variant="outline"
                         onClick={() => {
                           if (isReadOnly) return;
-                          complete.mutate(challenge.id);
+                          complete.mutate(safeChallenge.id);
                         }}
                         disabled={complete.isPending}
                       >
@@ -407,6 +465,7 @@ export function ChallengeDetailsPage() {
           )}
         </div>
       </section>
+      </>
     </AppLayout>
   );
 }

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { SoftCard } from "@/components/design";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { ChallengeCardImage } from "@/features/challenges/components/ChallengeCardImage";
+import { ChallengeCardImageWithEdit } from "@/features/challenges/components/ChallengeCardImageWithEdit";
 import { cn } from "@/lib/utils";
 import { oneLineSummary } from "@/features/challenges/api/mappers";
 import { mapChallengeFromApi } from "@/features/challenges/api/mappers";
@@ -10,12 +10,18 @@ import type { ChallengeDTO } from "@/features/challenges/types";
 interface DashboardChallengeCardProps {
   challenge: ChallengeDTO;
   completedToday?: boolean;
+  /** When true, show edit overlay on image so creator can replace it. */
+  isCreator?: boolean;
+  /** Called when image replace/generate fails (e.g. for toast). */
+  onImageError?: (message: string) => void;
   className?: string;
 }
 
 export function DashboardChallengeCard({
   challenge,
   completedToday,
+  isCreator = false,
+  onImageError,
   className,
 }: DashboardChallengeCardProps) {
   const c = mapChallengeFromApi(challenge);
@@ -26,8 +32,15 @@ export function DashboardChallengeCard({
   return (
     <Link to={`/challenges/${c.id}`} className="block transition-transform hover:scale-[1.02]">
       <SoftCard className={`flex flex-col overflow-hidden cursor-pointer p-0 ${className ?? ""}`}>
-        <div className="w-full h-36 shrink-0 overflow-hidden rounded-t-2xl bg-muted">
-          <ChallengeCardImage imageUrl={c.imageUrl} title={c.title} className="h-36 w-full" />
+        <div className="w-full h-36 shrink-0 overflow-hidden rounded-t-2xl bg-muted relative">
+          <ChallengeCardImageWithEdit
+            challengeId={c.id}
+            imageUrl={c.imageUrl}
+            title={c.title}
+            isCreator={isCreator}
+            className="h-36 w-full"
+            onError={onImageError}
+          />
         </div>
         <div className="p-4 pb-2">
           <div className="flex items-start justify-between gap-2">
