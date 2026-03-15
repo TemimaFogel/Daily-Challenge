@@ -48,6 +48,16 @@ export async function register(
   return data ?? {};
 }
 
+/**
+ * URL to start the backend Google OAuth flow.
+ * Redirect the browser here to begin "Continue with Google".
+ * Returns empty string if VITE_API_BASE_URL is not set.
+ */
+export function getGoogleOAuthStartUrl(): string {
+  const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+  return base ? `${base}/oauth2/authorization/google` : "";
+}
+
 /** POST /api/auth/forgot-password - always returns 200 (do not reveal if email exists). */
 export async function forgotPassword(email: string): Promise<void> {
   await http.post("/api/auth/forgot-password", { email: email.trim() });
