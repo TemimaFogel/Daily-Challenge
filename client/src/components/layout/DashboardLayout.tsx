@@ -1,6 +1,3 @@
-import { useState } from "react";
-import { useLocation } from "react-router-dom";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 interface DashboardLayoutProps {
@@ -16,11 +13,8 @@ export function DashboardLayout({
   leftSidebar,
   rightSidebar,
   children,
-  onMenuClick,
   mainClassName,
 }: DashboardLayoutProps) {
-  const [rightOpen, setRightOpen] = useState(false);
-  const location = useLocation();
 
   return (
     <div className="min-h-screen bg-background">

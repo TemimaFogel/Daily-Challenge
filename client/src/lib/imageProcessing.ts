@@ -14,7 +14,7 @@ export async function prepareProfileImage(file: File): Promise<File> {
     return file;
   }
 
-  return new Promise((resolve, reject) => {
+  return new Promise<File>((resolve) => {
     const img = document.createElement("img");
     const url = URL.createObjectURL(file);
 

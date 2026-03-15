@@ -11,7 +11,6 @@ import com.dailychallenge.mapper.UserMapper;
 import com.dailychallenge.repository.UserRepository;
 import com.dailychallenge.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -30,9 +29,6 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final InviteService inviteService;
-
-    @Value("${app.frontend.base-url:http://localhost:5173}")
-    private String frontendBaseUrl;
 
     @Transactional
     public AuthResponseDTO register(RegisterRequestDTO request) {

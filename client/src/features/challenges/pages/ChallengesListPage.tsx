@@ -19,14 +19,6 @@ function SearchIcon() {
   );
 }
 
-function BellIcon() {
-  return (
-    <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-    </svg>
-  );
-}
-
 export function ChallengesListPage() {
   const [params, setParams] = useState<ChallengeListParams>({});
   const [searchQuery, setSearchQuery] = useState("");
@@ -100,9 +92,15 @@ export function ChallengesListPage() {
     "response" in join.error &&
     (join.error as { response?: { status?: number } }).response?.status === 409;
 
+  const stopProp = (e: React.SyntheticEvent) => e.stopPropagation();
+
   const headerActions = (
-    <div className="flex items-center gap-2">
-      <div className="relative">
+    <div
+      className="relative z-10 flex items-center gap-2"
+      onClick={stopProp}
+      onMouseDown={stopProp}
+    >
+      <div className="relative" onClick={stopProp} onMouseDown={stopProp}>
         <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
           <SearchIcon />
         </span>
@@ -111,7 +109,11 @@ export function ChallengesListPage() {
           placeholder="Search..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          onFocus={stopProp}
+          onClick={stopProp}
+          onMouseDown={stopProp}
           className="h-9 w-40 rounded-md border border-input bg-background pl-8 pr-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Search challenges"
         />
       </div>
     </div>

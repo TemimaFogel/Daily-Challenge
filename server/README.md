@@ -1,14 +1,22 @@
 # Daily Challenge – Server
 
-Spring Boot backend for the Daily Challenge app.
+Spring Boot backend for the Daily Challenge application.
 
-## Local setup
+For full project documentation, setup instructions, and architecture, see the [root README](../README.md).
 
-Set the following environment variables before running the server. Do not commit real values to the repository.
+## Quick start
 
-- **DB_PASSWORD** – PostgreSQL password for the `dailychallenge` user.
-- **JWT_SECRET** – Secret used to sign JWT tokens (e.g. 256-bit value).
-- **MAIL_USERNAME** – SMTP username (e.g. Gmail address) for sending password reset and group invitation emails.
-- **MAIL_PASSWORD** – SMTP password (e.g. Gmail app password). No default; must be set for email to work.
+1. Set environment variables (see root README):
+   - `DB_PASSWORD` – PostgreSQL password for user `dailychallenge`
+   - `JWT_SECRET` – JWT signing secret (min 256 bits for HS256)
+   - Optional: `MAIL_USERNAME`, `MAIL_PASSWORD`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `HF_TOKEN`
 
-With `dev` profile active, the app also uses `application-dev.yml` for datasource and JPA settings.
+2. Run with dev profile:
+   ```bash
+   ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+   ```
+
+3. API: http://localhost:8080  
+   Swagger UI: http://localhost:8080/swagger-ui.html
+
+Do not commit real secrets; use placeholders or local env only.

@@ -31,10 +31,11 @@ interface SheetTriggerProps {
 function SheetTrigger({ asChild, children, className }: SheetTriggerProps) {
   const ctx = React.useContext(SheetContext);
   if (!ctx) return null;
-  const child = React.Children.only(children) as React.ReactElement;
+  const child = React.Children.only(children) as React.ReactElement<{ onClick?: (e: React.MouseEvent) => void; className?: string }>;
   if (asChild && React.isValidElement(child)) {
+    const props = child.props as Record<string, unknown>;
     return React.cloneElement(child, {
-      ...child.props,
+      ...props,
       onClick: (e: React.MouseEvent) => {
         child.props.onClick?.(e);
         ctx.onOpenChange(true);

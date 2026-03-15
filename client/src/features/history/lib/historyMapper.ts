@@ -46,6 +46,7 @@ export function buildHistoryMonthData(
     };
   }
 
+  const allEntries: DayEntry[] = [];
   for (const e of entries) {
     const entry: DayEntry = {
       date: e.date,
@@ -57,6 +58,7 @@ export function buildHistoryMonthData(
       completed: e.completed ?? false,
       completedAt: e.completedAt ?? null,
     };
+    allEntries.push(entry);
     if (!entriesByDate[e.date]) entriesByDate[e.date] = [];
     entriesByDate[e.date].push(entry);
   }
@@ -64,7 +66,7 @@ export function buildHistoryMonthData(
   return {
     entriesByDate,
     summaryByDate,
-    entries,
+    entries: allEntries,
     dailySummaries: dailySummaries.map((d) => ({
       date: d.date,
       joinedCount: d.joinedCount ?? 0,

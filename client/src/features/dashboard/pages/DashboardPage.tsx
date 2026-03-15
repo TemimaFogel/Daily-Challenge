@@ -12,7 +12,6 @@ import { useCurrentUser, getDisplayName } from "@/hooks/useCurrentUser";
 import { useTodayTopChallenge } from "../hooks/useTodayTopChallenge";
 import { getTodayLocal } from "@/features/challenges/lib/dateUtils";
 import { DashboardChallengeCard } from "../components/DashboardChallengeCard";
-import { HeroIllustration } from "../components/HeroIllustration";
 import type { PersonalDashboardItemDTO } from "@/api/dashboard.api";
 
 function KpiSkeleton() {
@@ -109,13 +108,14 @@ export function DashboardPage() {
     <AppLayout fullWidth>
       <div className="mx-auto w-full max-w-5xl space-y-8 px-4 py-6">
       <SoftCard largeRadius className="overflow-hidden">
-        <div className="bg-gradient-to-r from-primary/10 via-secondary/5 to-accent/10 dark:from-primary/15 dark:via-secondary/10 dark:to-accent/15 p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="min-w-0 flex-1">
+        <div
+          className="relative min-h-[140px] md:min-h-[160px] bg-cover bg-right bg-no-repeat p-6 md:p-8 flex flex-col justify-center"
+          style={{ backgroundImage: "url('/hero-achieve-together.png')" }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent dark:from-background/95 dark:via-background/80" aria-hidden />
+          <div className="relative z-10 max-w-xl">
             <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">Achieve more together.</h1>
             <p className="text-muted-foreground mt-1.5">Welcome back, {displayName}! Your daily growth journey starts here.</p>
-          </div>
-          <div className="flex justify-end shrink-0">
-            <HeroIllustration />
           </div>
         </div>
       </SoftCard>

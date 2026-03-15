@@ -174,7 +174,7 @@ export function GroupManagePage() {
     Promise.allSettled(
       inviteEmails.map((email) => groupsApi.createInvite(id, { email }))
     ).then((results) => {
-      const unregistered = inviteEmails.filter((email, i) => {
+      const unregistered = inviteEmails.filter((_, i) => {
         const r = results[i];
         if (r?.status !== "rejected") return false;
         const err = (r as PromiseRejectedResult).reason as {

@@ -28,7 +28,7 @@ export function DashboardNavbar() {
   const profileImageUrl = user?.profileImageUrl;
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border bg-white/95 px-4 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:bg-card/95">
+    <header className="sticky top-0 z-30 flex h-20 shrink-0 items-center justify-between gap-4 border-b border-border bg-white/95 px-4 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:bg-card/95">
       <Link to="/" className="flex shrink-0 items-center gap-2">
         <img
           src="/logo.png"
@@ -61,21 +61,6 @@ export function DashboardNavbar() {
       </nav>
 
       <div className="flex shrink-0 items-center gap-2">
-        <div className="relative hidden sm:block">
-          <input
-            type="search"
-            placeholder="Search..."
-            className="h-9 w-40 rounded-full border border-border bg-muted/50 pl-4 pr-10 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <svg
-            className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
         <NotificationsBell />
         {currentUser ? (
           <DropdownMenu>

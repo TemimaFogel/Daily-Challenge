@@ -6,7 +6,6 @@ import { RegisterPage } from "@/pages/RegisterPage";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { OAuthSuccessPage } from "@/pages/OAuthSuccessPage";
-import { PlaceholderPage } from "@/pages/PlaceholderPage";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import {
   ChallengesListPage,
