@@ -51,7 +51,7 @@ class InviteServiceTest {
         InviteRequestDTO request = InviteRequestDTO.builder().email("user@example.com").build();
 
         when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(invitedUser));
+        when(userRepository.findByEmailAndDeletedAtIsNull("user@example.com")).thenReturn(Optional.of(invitedUser));
         when(groupMemberRepository.existsByGroupIdAndUserId(groupId, invitedUserId)).thenReturn(false);
         when(groupInviteRepository.existsByGroupIdAndInvitedUserIdAndStatus(
                 groupId, invitedUserId, com.dailychallenge.entity.GroupInviteStatus.PENDING))

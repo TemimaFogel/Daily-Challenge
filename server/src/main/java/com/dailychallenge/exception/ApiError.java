@@ -19,6 +19,8 @@ public class ApiError {
     private Instant timestamp;
     private int status;
     private String error;
+    /** Optional error code for client-side handling (e.g. USER_NOT_FOUND). */
+    private String code;
     private String message;
     private String path;
     private List<FieldErrorItem> fieldErrors;

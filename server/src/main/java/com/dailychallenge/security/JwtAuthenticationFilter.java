@@ -1,5 +1,6 @@
 package com.dailychallenge.security;
 
+import com.dailychallenge.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,6 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(
@@ -40,15 +42,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (jwtTokenProvider.validateToken(token)) {
                     UUID userId = jwtTokenProvider.extractUserId(token);
                     String email = jwtTokenProvider.extractEmail(token);
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    new JwtPrincipal(userId, email),
-                                    null,
-                                    Collections.emptyList());
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                    if (log.isDebugEnabled()) {
-                        log.debug("JWT authenticated for request {} {}; principal userId={}", request.getMethod(), request.getRequestURI(), userId);
+                    boolean userActive = userRepository.findById(userId)
+                            .map(u -> u.getDeletedAt() == null)
+                            .orElse(false);
+                    if (userActive) {
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(
+                                        new JwtPrincipal(userId, email),
+                                        null,
+                                        Collections.emptyList());
+                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                        if (log.isDebugEnabled()) {
+                            log.debug("JWT authenticated for request {} {}; principal userId={}", request.getMethod(), request.getRequestURI(), userId);
+                        }
+                    } else {
+                        if (log.isDebugEnabled()) {
+                            log.debug("JWT user deleted or not found for request {} {}; userId={}", request.getMethod(), request.getRequestURI(), userId);
+                        }
                     }
                 } else {
                     if (log.isDebugEnabled()) {

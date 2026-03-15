@@ -8,14 +8,19 @@ import com.dailychallenge.dto.group.InvitePreviewGroupDTO;
 import com.dailychallenge.dto.group.InvitePreviewMemberDTO;
 import com.dailychallenge.dto.group.InviteRequestDTO;
 import com.dailychallenge.dto.group.InvitedUserViewDTO;
+import com.dailychallenge.entity.ExternalGroupInvite;
+import com.dailychallenge.entity.ExternalGroupInviteStatus;
 import com.dailychallenge.entity.Group;
 import com.dailychallenge.entity.GroupInvite;
 import com.dailychallenge.entity.GroupInviteStatus;
 import com.dailychallenge.entity.GroupMember;
 import com.dailychallenge.entity.User;
 import com.dailychallenge.exception.ConflictException;
+import com.dailychallenge.exception.EmailDeliveryException;
 import com.dailychallenge.exception.ForbiddenException;
 import com.dailychallenge.exception.NotFoundException;
+import com.dailychallenge.exception.UserNotRegisteredException;
+import com.dailychallenge.repository.ExternalGroupInviteRepository;
 import com.dailychallenge.repository.GroupInviteRepository;
 import com.dailychallenge.repository.GroupMemberRepository;
 import com.dailychallenge.repository.GroupRepository;
@@ -39,6 +44,7 @@ public class InviteService {
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final GroupInviteRepository groupInviteRepository;
+    private final ExternalGroupInviteRepository externalGroupInviteRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
 
@@ -59,8 +65,8 @@ public class InviteService {
             throw new ForbiddenException("Only the group owner can invite members");
         }
 
-        User invitedUser = userRepository.findByEmail(invitedEmail)
-                .orElseThrow(() -> new NotFoundException("User not found"));
+        User invitedUser = userRepository.findByEmailAndDeletedAtIsNull(invitedEmail)
+                .orElseThrow(UserNotRegisteredException::new);
 
         UUID invitedUserId = invitedUser.getId();
 
@@ -122,6 +128,123 @@ public class InviteService {
         } catch (Exception e) {
             log.warn("Group invitation email failed; invite was still created. Error: {} (cause: {})",
                 e.getMessage(), e.getCause() != null ? e.getCause().getMessage() : "none", e);
+        }
+    }
+
+    /**
+     * Sends an external (unregistered) email invitation to join DailyChallenge and the group.
+     * Does not create a GroupInvite; only sends the email.
+     * @throws ConflictException if the email belongs to a registered user (use regular invite flow)
+     * @throws EmailDeliveryException if the invitation email could not be sent
+     */
+    public void sendExternalInvite(UUID groupId, InviteRequestDTO request, UUID currentUserId) {
+        String email = request.getEmail() != null ? request.getEmail().trim() : "";
+        if (email.isEmpty()) {
+            throw new IllegalArgumentException("Email is required");
+        }
+
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new NotFoundException("Group not found"));
+        if (group.getDeletedAt() != null) {
+            throw new NotFoundException("Group not found");
+        }
+        if (!group.getOwnerId().equals(currentUserId)) {
+            throw new ForbiddenException("Only the group owner can invite members");
+        }
+
+        if (userRepository.findByEmailAndDeletedAtIsNull(email).isPresent()) {
+            throw new ConflictException("User already exists. Use the regular invite flow.");
+        }
+
+        String inviterName = userRepository.findById(currentUserId)
+                .map(User::getName)
+                .orElse("Someone");
+        String registerUrl = (frontendBaseUrl != null ? frontendBaseUrl.trim() : "http://localhost:5173")
+                .replaceAll("/+$", "") + "/register";
+
+        log.info("External invite email sending started for group {} to {}", group.getName(), email);
+        try {
+            boolean sent = emailService.sendExternalGroupInviteEmail(
+                    email,
+                    inviterName,
+                    group.getName(),
+                    registerUrl
+            );
+            if (sent) {
+                log.info("External invite email sent successfully");
+                ExternalGroupInvite externalInvite = ExternalGroupInvite.builder()
+                        .groupId(groupId)
+                        .invitedEmail(email)
+                        .invitedByUserId(currentUserId)
+                        .status(ExternalGroupInviteStatus.PENDING)
+                        .createdAt(Instant.now())
+                        .build();
+                externalGroupInviteRepository.save(externalInvite);
+                log.info("External group invite persisted for group {} to {}", group.getName(), email);
+            } else {
+                log.warn("External invite email was not sent (mail may be disabled or send failed)");
+                throw new EmailDeliveryException(
+                        "Failed to send invitation email. Please try again later.");
+            }
+        } catch (EmailDeliveryException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("External invite email failed: {} (cause: {})",
+                e.getMessage(), e.getCause() != null ? e.getCause().getMessage() : "none", e);
+            throw new EmailDeliveryException(
+                    "Failed to send invitation email. Please try again later.", e);
+        }
+    }
+
+    /**
+     * Converts pending external group invites for the given email into normal GroupInvite records
+     * for the newly registered user. Called after registration so the user sees invites in the app.
+     * Idempotent: skips conversion if a GroupInvite already exists for this user and group.
+     */
+    @Transactional
+    public void convertPendingExternalInvitesForUser(UUID newUserId, String email) {
+        if (email == null || email.isBlank()) {
+            return;
+        }
+        List<ExternalGroupInvite> pending = externalGroupInviteRepository
+                .findByInvitedEmailIgnoreCaseAndStatus(email.trim(), ExternalGroupInviteStatus.PENDING);
+        if (pending.isEmpty()) {
+            return;
+        }
+        Instant now = Instant.now();
+        for (ExternalGroupInvite ext : pending) {
+            Group group = groupRepository.findById(ext.getGroupId()).orElse(null);
+            if (group == null || group.getDeletedAt() != null) {
+                continue;
+            }
+            if (groupMemberRepository.existsByGroupIdAndUserId(ext.getGroupId(), newUserId)) {
+                ext.setStatus(ExternalGroupInviteStatus.CONVERTED);
+                ext.setConvertedAt(now);
+                ext.setConvertedToUserId(newUserId);
+                externalGroupInviteRepository.save(ext);
+                continue;
+            }
+            if (groupInviteRepository.existsByGroupIdAndInvitedUserIdAndStatus(
+                    ext.getGroupId(), newUserId, GroupInviteStatus.PENDING)) {
+                ext.setStatus(ExternalGroupInviteStatus.CONVERTED);
+                ext.setConvertedAt(now);
+                ext.setConvertedToUserId(newUserId);
+                externalGroupInviteRepository.save(ext);
+                continue;
+            }
+            GroupInvite invite = GroupInvite.builder()
+                    .groupId(ext.getGroupId())
+                    .invitedUserId(newUserId)
+                    .invitedByUserId(ext.getInvitedByUserId())
+                    .status(GroupInviteStatus.PENDING)
+                    .createdAt(now)
+                    .build();
+            groupInviteRepository.save(invite);
+            ext.setStatus(ExternalGroupInviteStatus.CONVERTED);
+            ext.setConvertedAt(now);
+            ext.setConvertedToUserId(newUserId);
+            externalGroupInviteRepository.save(ext);
+            log.info("Converted external invite to GroupInvite for user {} and group {}", newUserId, ext.getGroupId());
         }
     }
 

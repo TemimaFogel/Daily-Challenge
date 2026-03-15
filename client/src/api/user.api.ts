@@ -38,3 +38,9 @@ export async function uploadProfileImage(file: File): Promise<ProfileImageRespon
   });
   return data ?? {};
 }
+
+/** DELETE /api/users/me - soft-delete the current user's account (requires auth) */
+export async function deleteCurrentUser(): Promise<{ message: string }> {
+  const { data } = await http.delete<{ message: string }>("/api/users/me");
+  return data ?? { message: "" };
+}

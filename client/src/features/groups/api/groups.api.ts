@@ -83,6 +83,11 @@ export const groupsApi = {
     return http.post(`/api/groups/${groupId}/invites`, body).then((r) => r.data);
   },
 
+  /** Send external (unregistered) email invitation to join DailyChallenge and the group. */
+  createExternalInvite(groupId: string, body: { email: string }): Promise<{ message: string }> {
+    return http.post<{ message: string }>(`/api/groups/${groupId}/external-invites`, body).then((r) => r.data ?? { message: "" });
+  },
+
   removeMember(groupId: string, userId: string): Promise<void> {
     return http.delete(`/api/groups/${groupId}/members/${userId}`).then(() => undefined);
   },

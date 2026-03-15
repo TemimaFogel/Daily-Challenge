@@ -12,6 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -30,7 +31,8 @@ public class User {
     @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
-    @Column(name = "email", nullable = false, unique = true, length = 255)
+    /** Uniqueness enforced by partial unique index (active users only) via migration V16. */
+    @Column(name = "email", nullable = false, length = 255)
     private String email;
 
     @Column(name = "password", nullable = false, length = 255)
@@ -44,6 +46,9 @@ public class User {
 
     @Column(name = "profile_image_url", length = 512)
     private String profileImageUrl;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
     @OneToMany(mappedBy = "owner")
     private List<Group> groups = new ArrayList<>();

@@ -23,10 +23,11 @@ public class AuthService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final InviteService inviteService;
 
     @Transactional
     public AuthResponseDTO register(RegisterRequestDTO request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByEmailAndDeletedAtIsNull(request.getEmail())) {
             throw new ConflictException("Email already registered");
         }
         String hashedPassword = passwordEncoder.encode(request.getPassword());
@@ -37,6 +38,7 @@ public class AuthService {
                 .timezone(request.getTimezone())
                 .build();
         user = userRepository.save(user);
+        inviteService.convertPendingExternalInvitesForUser(user.getId(), user.getEmail());
         UserDTO userDTO = userMapper.toDTO(user);
         String token = jwtTokenProvider.generateToken(user.getId(), user.getEmail());
         return AuthResponseDTO.builder()
@@ -46,7 +48,7 @@ public class AuthService {
     }
 
     public AuthResponseDTO login(LoginRequestDTO request) {
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByEmailAndDeletedAtIsNull(request.getEmail())
                 .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new UnauthorizedException("Invalid email or password");

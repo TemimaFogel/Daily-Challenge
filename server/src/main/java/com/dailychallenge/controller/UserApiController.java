@@ -1,5 +1,6 @@
 package com.dailychallenge.controller;
 
+import com.dailychallenge.dto.auth.MessageResponseDTO;
 import com.dailychallenge.dto.user.ProfileImageResponseDTO;
 import com.dailychallenge.dto.user.UpdateUserRequestDTO;
 import com.dailychallenge.dto.user.UserDTO;
@@ -122,6 +123,20 @@ public class UserApiController {
         UUID currentUserId = requireCurrentUserId();
         profileImageService.deleteProfileImage(currentUserId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
+    @DeleteMapping("/me")
+    @Operation(summary = "Delete my account", description = "Soft-delete the authenticated user's account. Only the current user can delete their own account. After deletion the user cannot log in and will not appear in search or invite flows.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Account deleted successfully"),
+            @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
+    public ResponseEntity<MessageResponseDTO> deleteCurrentUser() {
+        UUID currentUserId = requireCurrentUserId();
+        userService.deleteCurrentUser(currentUserId);
+        return ResponseEntity.ok(
+                MessageResponseDTO.builder().message("Account deleted successfully.").build()
+        );
     }
 
     private UUID requireCurrentUserId() {

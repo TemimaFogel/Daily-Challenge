@@ -57,7 +57,7 @@ public class PasswordResetService {
         if (email.isEmpty()) {
             return;
         }
-        Optional<User> userOpt = userRepository.findByEmail(email);
+        Optional<User> userOpt = userRepository.findByEmailAndDeletedAtIsNull(email);
         if (userOpt.isEmpty()) {
             return;
         }
@@ -96,6 +96,9 @@ public class PasswordResetService {
                 .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset link. Please request a new one."));
         User user = userRepository.findById(token.getUserId())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        if (user.getDeletedAt() != null) {
+            throw new IllegalArgumentException("Invalid or expired reset link. Please request a new one.");
+        }
         String newPassword = request.getNewPassword() != null ? request.getNewPassword().trim() : "";
         if (newPassword.length() < 6) {
             throw new IllegalArgumentException("Password must be at least 6 characters");

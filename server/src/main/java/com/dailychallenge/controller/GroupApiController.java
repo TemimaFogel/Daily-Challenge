@@ -6,6 +6,7 @@ import com.dailychallenge.dto.group.GroupDTO;
 import com.dailychallenge.dto.group.GroupInviteViewDTO;
 import com.dailychallenge.dto.group.GroupMemberDTO;
 import com.dailychallenge.dto.group.GroupSummaryDTO;
+import com.dailychallenge.dto.auth.MessageResponseDTO;
 import com.dailychallenge.dto.group.InviteRequestDTO;
 import com.dailychallenge.dto.group.InviteDTO;
 import com.dailychallenge.exception.UnauthorizedException;
@@ -78,12 +79,32 @@ public class GroupApiController {
     }
 
     @PostMapping("/{id}/invites")
+    @Operation(summary = "Invite a member by email", description = "Creates a group invite for a registered user. Only the group owner can invite. Returns 404 with code USER_NOT_FOUND if the email is not registered.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Invite created"),
+            @ApiResponse(responseCode = "400", description = "Validation error"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Only the group owner can invite members"),
+            @ApiResponse(responseCode = "404", description = "Group not found, or email not registered (body includes code: USER_NOT_FOUND, message: This email is not registered on DailyChallenge yet.)"),
+            @ApiResponse(responseCode = "409", description = "User already in group or pending invite exists")
+    })
     public ResponseEntity<InviteDTO> createInvite(
             @PathVariable("id") UUID groupId,
             @Valid @RequestBody InviteRequestDTO request) {
         UUID currentUserId = requireCurrentUserId();
         InviteDTO created = inviteService.createInvite(groupId, request, currentUserId);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PostMapping("/{id}/external-invites")
+    public ResponseEntity<MessageResponseDTO> sendExternalInvite(
+            @PathVariable("id") UUID groupId,
+            @Valid @RequestBody InviteRequestDTO request) {
+        UUID currentUserId = requireCurrentUserId();
+        inviteService.sendExternalInvite(groupId, request, currentUserId);
+        return ResponseEntity.ok(
+            MessageResponseDTO.builder().message("Invitation email sent.").build()
+        );
     }
 
     @PostMapping("/{id}/leave")

@@ -31,11 +31,29 @@ export function useCreateGroup() {
       if (inviteEmails.length === 0) {
         return { group, invited: 0, failed: 0 };
       }
-      const results = await Promise.allSettled(
-        inviteEmails.map((email) => groupsApi.createInvite(group.id, { email }))
-      );
-      const failed = results.filter((r) => r.status === "rejected").length;
-      const invited = results.length - failed;
+      let invited = 0;
+      let failed = 0;
+      for (const email of inviteEmails) {
+        try {
+          await groupsApi.createInvite(group.id, { email });
+          invited++;
+        } catch (err: unknown) {
+          const ax = err as { response?: { status?: number; data?: { code?: string } } };
+          if (
+            ax?.response?.status === 404 &&
+            ax?.response?.data?.code === "USER_NOT_FOUND"
+          ) {
+            try {
+              await groupsApi.createExternalInvite(group.id, { email });
+              invited++;
+            } catch {
+              failed++;
+            }
+          } else {
+            failed++;
+          }
+        }
+      }
       return { group, invited, failed };
     },
     onSuccess: () => {

@@ -60,6 +60,8 @@ export interface InviteMembersPickerProps {
   onSelectedUsersChange: (users: UserSearchResult[]) => void;
   manualEmails: string[];
   onManualEmailsChange: (emails: string[]) => void;
+  /** When provided (e.g. on Group Manage page), "Invite to Platform" calls this instead of adding to manualEmails. Use for immediate external invite when group exists. */
+  onInviteToPlatform?: (email: string) => void | Promise<void>;
   className?: string;
 }
 
@@ -68,15 +70,23 @@ export function InviteMembersPicker({
   onSelectedUsersChange,
   manualEmails,
   onManualEmailsChange,
+  onInviteToPlatform,
   className,
 }: InviteMembersPickerProps) {
-  const [manualEmailError, setManualEmailError] = useState<string | null>(null);
   const { query, setQuery, debouncedQuery, results, isFetching } = useUserSearch();
   const selectedIds = new Set(selectedUsers.map((u) => u.id));
   const selectedEmails = new Set([
     ...selectedUsers.map((u) => u.email.toLowerCase()),
     ...manualEmails.map((e) => e.trim().toLowerCase()),
   ]);
+
+  const trimmedQuery = debouncedQuery.trim();
+  const queryIsEmail = isValidEmail(trimmedQuery);
+  const queryMatchesNoResult =
+    queryIsEmail &&
+    (results.length === 0 ||
+      !results.some((r) => r.email?.toLowerCase() === trimmedQuery.toLowerCase()));
+  const showUnregisteredCta = trimmedQuery.length >= 1 && queryIsEmail && queryMatchesNoResult;
 
   const toggleUser = useCallback(
     (user: UserSearchResult) => {
@@ -89,23 +99,17 @@ export function InviteMembersPicker({
     [selectedUsers, selectedIds, onSelectedUsersChange]
   );
 
-  const [manualInput, setManualInput] = useState("");
-  const addManualEmail = useCallback(() => {
-    const trimmed = manualInput.trim();
-    setManualEmailError(null);
-    if (!trimmed) return;
-    if (!isValidEmail(trimmed)) {
-      setManualEmailError("Please enter a valid email address.");
-      return;
+  const addUnregisteredEmail = useCallback(() => {
+    if (!trimmedQuery || !showUnregisteredCta) return;
+    const lower = trimmedQuery.toLowerCase();
+    if (selectedEmails.has(lower)) return;
+    if (onInviteToPlatform) {
+      void Promise.resolve(onInviteToPlatform(trimmedQuery)).then(() => setQuery(""));
+    } else {
+      onManualEmailsChange([...manualEmails, trimmedQuery]);
+      setQuery("");
     }
-    const lower = trimmed.toLowerCase();
-    if (selectedEmails.has(lower)) {
-      setManualEmailError("This email is already in the invite list.");
-      return;
-    }
-    onManualEmailsChange([...manualEmails, trimmed]);
-    setManualInput("");
-  }, [manualInput, manualEmails, selectedEmails, onManualEmailsChange]);
+  }, [trimmedQuery, showUnregisteredCta, selectedEmails, manualEmails, onManualEmailsChange, onInviteToPlatform, setQuery]);
 
   const removeManualEmail = useCallback(
     (email: string) => {
@@ -171,8 +175,28 @@ export function InviteMembersPicker({
       </div>
       )}
 
-      {/* Selected Invites */}
-      {selectedUsers.length > 0 ? (
+      {/* Unregistered email CTA — when query looks like email and no user found */}
+      {showUnregisteredCta && (
+        <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+          <p className="text-sm text-foreground">
+            This email is not registered on DailyChallenge yet.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            You can send them an invitation to join the platform.
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={addUnregisteredEmail}
+          >
+            Invite to Platform
+          </Button>
+        </div>
+      )}
+
+      {/* Selected Invites — users from search + emails added via "Invite to Platform" */}
+      {(selectedUsers.length > 0 || manualEmails.length > 0) ? (
         <div className="space-y-2">
           <span className="text-sm font-medium text-muted-foreground">Selected Invites</span>
           <div className="flex flex-wrap gap-2">
@@ -195,55 +219,25 @@ export function InviteMembersPicker({
                 </button>
               </span>
             ))}
-          </div>
-        </div>
-      ) : null}
-
-      {/* Manual email invite */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Invite by email</label>
-        <div className="flex gap-2">
-          <Input
-            type="email"
-            placeholder="email@example.com"
-            value={manualInput}
-            onChange={(e) => {
-              setManualInput(e.target.value);
-              if (manualEmailError) setManualEmailError(null);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.preventDefault();
-            }}
-            className="flex-1"
-          />
-          <Button type="button" variant="secondary" onClick={addManualEmail}>
-            Add
-          </Button>
-        </div>
-        {manualEmailError && (
-          <p className="text-sm text-destructive">{manualEmailError}</p>
-        )}
-        {manualEmails.length > 0 && (
-          <div className="flex flex-wrap gap-2">
             {manualEmails.map((email) => (
               <span
                 key={email}
-                className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs"
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-1.5 text-sm"
               >
                 {email}
                 <button
                   type="button"
                   onClick={() => removeManualEmail(email)}
-                  className="rounded p-0.5 hover:bg-muted-foreground/20"
+                  className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                   aria-label={`Remove ${email}`}
                 >
-                  ×
+                  <X className="size-4" />
                 </button>
               </span>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -135,6 +135,8 @@ export function GroupManagePage() {
   const [selectedUsers, setSelectedUsers] = useState<UserSearchResult[]>([]);
   const [manualEmails, setManualEmails] = useState<string[]>([]);
   const [sendingInvites, setSendingInvites] = useState(false);
+  const [unregisteredEmails, setUnregisteredEmails] = useState<string[]>([]);
+  const [sendingExternalInvites, setSendingExternalInvites] = useState(false);
 
   const groupName = groupFromCache?.name?.trim() || "—";
 
@@ -168,25 +170,95 @@ export function GroupManagePage() {
   const handleSendInvites = useCallback(() => {
     if (!id || inviteEmails.length === 0) return;
     setSendingInvites(true);
+    setUnregisteredEmails([]);
     Promise.allSettled(
       inviteEmails.map((email) => groupsApi.createInvite(id, { email }))
     ).then((results) => {
+      const unregistered = inviteEmails.filter((email, i) => {
+        const r = results[i];
+        if (r?.status !== "rejected") return false;
+        const err = (r as PromiseRejectedResult).reason as {
+          response?: { status?: number; data?: { code?: string } };
+        };
+        return (
+          err?.response?.status === 404 &&
+          err?.response?.data?.code === "USER_NOT_FOUND"
+        );
+      });
       const failed = results.filter((r) => r.status === "rejected").length;
       const succeeded = results.length - failed;
       refetchInvites();
       queryClient.invalidateQueries({ queryKey: ["groups", id, "invites"] });
       setSelectedUsers([]);
       setManualEmails([]);
-      if (failed > 0) {
+      if (unregistered.length > 0) {
+        setUnregisteredEmails(unregistered);
         setToast(
-          `Sent ${succeeded} invite(s). ${failed} failed.`
+          succeeded > 0
+            ? `Sent ${succeeded} invite(s). ${unregistered.length} not registered — you can send them an email invitation.`
+            : "This email is not registered on DailyChallenge yet. You can send an email invitation."
         );
+      } else if (failed > 0) {
+        setToast(`Sent ${succeeded} invite(s). ${failed} failed.`);
       } else {
-        setToast(`Invites sent.`);
+        setToast("Invites sent.");
       }
       setSendingInvites(false);
     });
   }, [id, inviteEmails, refetchInvites, queryClient]);
+
+  const handleInviteToPlatform = useCallback(
+    async (email: string) => {
+      if (!id) return;
+      try {
+        await groupsApi.createExternalInvite(id, { email });
+        setToast("Invitation email sent successfully.");
+      } catch {
+        setToast("Failed to send email invitation. Please try again.");
+      }
+    },
+    [id]
+  );
+
+  const handleSendExternalInvites = useCallback(() => {
+    if (!id || unregisteredEmails.length === 0) return;
+    const emailsToSend = [...unregisteredEmails];
+    const unregisteredSet = new Set(emailsToSend.map((e) => e.trim().toLowerCase()));
+    setSendingExternalInvites(true);
+    Promise.all(
+      emailsToSend.map((email) => groupsApi.createExternalInvite(id, { email }))
+    )
+      .then(() => {
+        setUnregisteredEmails([]);
+        setManualEmails((prev) =>
+          prev.filter((e) => !unregisteredSet.has(e.trim().toLowerCase()))
+        );
+        setSelectedUsers((prev) =>
+          prev.filter(
+            (u) => !unregisteredSet.has((u.email ?? "").trim().toLowerCase())
+          )
+        );
+        setToast(
+          emailsToSend.length === 1
+            ? "Invitation email sent successfully."
+            : "Invitation emails sent successfully."
+        );
+      })
+      .catch((err: { response?: { status?: number; data?: { message?: string } } }) => {
+        const msg = err?.response?.data?.message;
+        const status = err?.response?.status;
+        if (status === 409 && msg) {
+          setToast(msg);
+        } else {
+          setToast(
+            emailsToSend.length === 1
+              ? "Failed to send email invitation. Please try again."
+              : "Failed to send some invitation emails. Please try again."
+          );
+        }
+      })
+      .finally(() => setSendingExternalInvites(false));
+  }, [id, unregisteredEmails]);
 
   if (!id) {
     return (
@@ -393,6 +465,7 @@ export function GroupManagePage() {
                 onSelectedUsersChange={setSelectedUsers}
                 manualEmails={manualEmails}
                 onManualEmailsChange={setManualEmails}
+                onInviteToPlatform={handleInviteToPlatform}
               />
               <Button
                 onClick={handleSendInvites}
@@ -400,6 +473,35 @@ export function GroupManagePage() {
               >
                 {sendingInvites ? "Sending…" : "Send Invites"}
               </Button>
+
+              {unregisteredEmails.length > 0 && (
+                <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+                  <p className="text-sm font-medium text-foreground">
+                    {unregisteredEmails.length === 1
+                      ? "This email is not registered on DailyChallenge yet."
+                      : "These emails are not registered on DailyChallenge yet."}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    You can still send them an email invitation to join the platform and your group.
+                  </p>
+                  <ul className="text-sm text-muted-foreground list-disc list-inside">
+                    {unregisteredEmails.map((email) => (
+                      <li key={email}>{email}</li>
+                    ))}
+                  </ul>
+                  <Button
+                    variant="secondary"
+                    onClick={handleSendExternalInvites}
+                    disabled={sendingExternalInvites}
+                  >
+                    {sendingExternalInvites
+                      ? "Sending…"
+                      : unregisteredEmails.length === 1
+                        ? "Send Email Invitation"
+                        : "Send Email Invitations"}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 
