@@ -1,11 +1,9 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 spring:
   application:
     name: daily-challenge-server
-  profiles:
-    active: dev
 
   jpa:
     hibernate:
@@ -16,9 +14,18 @@ spring:
         jdbc:
           time_zone: UTC
 
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
   flyway:
     enabled: true
     locations: classpath:db/migration
+    url: ${SPRING_FLYWAY_URL:${SPRING_DATASOURCE_URL}}
+    user: ${SPRING_FLYWAY_USER:${SPRING_DATASOURCE_USERNAME}}
+    password: ${SPRING_FLYWAY_PASSWORD:${SPRING_DATASOURCE_PASSWORD}}
 
   mail:
     host: smtp.gmail.com
@@ -53,27 +60,17 @@ app:
     secret: ${JWT_SECRET}
     expiration-minutes: 120
   daily:
-    # IANA timezone for "today" / daily boundaries (default: Asia/Jerusalem)
     zone: Asia/Jerusalem
   uploads:
-    # Directory for uploaded files (e.g. profile images). Created on startup if missing.
     dir: ./uploads
-    # Base URL for public image URLs (e.g. http://localhost:8080). Override in production.
-    public-base-url: http://localhost:8080
+    public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
   frontend:
-    # Base URL for links in emails (invitations, password reset, etc.). Override in production.
-    base-url: http://localhost:5173
+    base-url: ${APP_FRONTEND_BASE_URL:http://localhost:5173}
   password-reset:
-    # Frontend base URL for reset link (e.g. http://localhost:5173). Override in production.
-    base-url: http://localhost:5173
+    base-url: ${APP_FRONTEND_BASE_URL:http://localhost:5173}
     expiration-minutes: 60
 
-# Hugging Face Inference Providers (router) for AI-generated challenge images (when user does not upload an image).
-# Set HF_TOKEN env var. If unset or generation fails, challenge gets fallback placeholder imageUrl.
-# Endpoint: https://router.huggingface.co/hf-inference/models/{model}
 huggingface:
   api:
     token: ${HF_TOKEN:}
-    # Text-to-image model (must be available on Inference Providers). Default: FLUX.1-schnell (fast, router-supported).
     model: black-forest-labs/FLUX.1-schnell
-    
