@@ -13,7 +13,7 @@ public class CorsConfig {
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
                         .allowedOrigins(
-                                "https://YOUR-FRONTEND-URL.onrender.com",
+                                "https://https://daily-challenge-vwgy.onrender.com/",
                                 "http://localhost:5173"
                         )
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
