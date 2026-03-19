@@ -97,9 +97,26 @@ cd server
 Set environment variables (see [Environment Variables](#environment-variables--configuration) below). Example:
 
 ```bash
-export DB_PASSWORD=your_db_password
+# Database
+export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/daily_challenge
+export SPRING_DATASOURCE_USERNAME=dailychallenge
+export SPRING_DATASOURCE_PASSWORD=your_db_password
+
+# Flyway (optional - defaults to datasource)
+export SPRING_FLYWAY_URL=jdbc:postgresql://localhost:5432/daily_challenge
+export SPRING_FLYWAY_USER=dailychallenge
+export SPRING_FLYWAY_PASSWORD=your_db_password
+
+# Security
 export JWT_SECRET=your_jwt_secret_at_least_32_chars
-# Optional: MAIL_USERNAME, MAIL_PASSWORD, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, HF_TOKEN
+
+# Optional integrations
+export MAIL_USERNAME=your_email
+export MAIL_PASSWORD=your_email_password
+export GOOGLE_CLIENT_ID=your_google_client_id
+export GOOGLE_CLIENT_SECRET=your_google_client_secret
+export HF_TOKEN=your_huggingface_token
+
 ```
 
 Run the server:
@@ -144,14 +161,19 @@ Use environment variables or `application.yml` placeholders. **Do not commit rea
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DB_PASSWORD` | Yes (prod) | PostgreSQL password for the `dailychallenge` user. |
-| `JWT_SECRET` | Yes (prod) | Secret for signing JWTs (e.g. 256-bit). Dev default in `application-dev.yml` only. |
-| `MAIL_USERNAME` | No | SMTP username (e.g. Gmail) for password reset and invitation emails. |
-| `MAIL_PASSWORD` | No | SMTP password (e.g. app password). If unset, email features will not send. |
-| `GOOGLE_CLIENT_ID` | No | Google OAuth2 client ID for “Continue with Google”. |
-| `GOOGLE_CLIENT_SECRET` | No | Google OAuth2 client secret. |
-| `HF_TOKEN` | No | Hugging Face token for optional AI-generated challenge images. |
-| `VITE_API_BASE_URL` | No (frontend) | Backend base URL (e.g. `http://localhost:8080`). Used for API and OAuth redirect. |
+| `SPRING_DATASOURCE_URL` | Yes | JDBC URL for PostgreSQL |
+| `SPRING_DATASOURCE_USERNAME` | Yes | Database username |
+| `SPRING_DATASOURCE_PASSWORD` | Yes | Database password |
+| `SPRING_FLYWAY_URL` | No | Flyway DB URL (defaults to datasource) |
+| `SPRING_FLYWAY_USER` | No | Flyway DB user |
+| `SPRING_FLYWAY_PASSWORD` | No | Flyway DB password |
+| `JWT_SECRET` | Yes | Secret for signing JWTs |
+| `MAIL_USERNAME` | No | SMTP username |
+| `MAIL_PASSWORD` | No | SMTP password |
+| `GOOGLE_CLIENT_ID` | No | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | No | Google OAuth secret |
+| `HF_TOKEN` | No | Hugging Face token |
+| `VITE_API_BASE_URL` | No (frontend) | Backend base URL |
 
 Backend config (e.g. `app.frontend.base-url`, `app.uploads.dir`, `app.password-reset.base-url`) can be overridden in `application.yml` or profile-specific files.
 
@@ -257,7 +279,9 @@ public/              # Static assets (favicon, logo, hero image)
 
 ## Notes for Reviewers / Submission
 
-- **Run backend**: From `server/`, set `DB_PASSWORD` and `JWT_SECRET` (and optionally mail/Google/HF), then `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev`. Ensure PostgreSQL is running and the database exists; Flyway will apply migrations.
+- **Run backend**: From `server/`, set the required environment variables (see table above, especially `SPRING_DATASOURCE_*` and `JWT_SECRET`),
+   then run:
+  `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev`, then `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev`. Ensure PostgreSQL is running and the database exists; Flyway will apply migrations.
 - **Run frontend**: From `client/`, run `npm install` then `npm run dev`. Set `VITE_API_BASE_URL=http://localhost:8080` if the API is on another host.
 - **Evaluate**: Use the app at http://localhost:5173 (register, create/join challenges, create groups, invite, use history and settings). Use http://localhost:8080/swagger-ui.html to exercise the API. Both backend (`mvn compile`, `mvn test`) and frontend (`npm run build`) should build without errors.
 - **Credentials**: No real secrets are committed; use placeholders or local env vars as described above.
